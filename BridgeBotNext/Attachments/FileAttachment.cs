@@ -1,0 +1,91 @@
+using HeyRed.Mime;
+
+namespace BridgeBotNext.Attachments
+{
+    public class FileAttachment : Attachment
+    {
+        public FileAttachment(string url, object meta = null, string fileName = null, long fileSize = 0,
+            string mimeType = null) : base(url, meta)
+        {
+            FileName = fileName ?? _generateDefaultFileName(mimeType);
+            MimeType = mimeType ?? MimeTypesMap.GetMimeType(fileName);
+            FileSize = fileSize;
+        }
+
+        public FileAttachment(string url, object meta) : base(url, meta)
+        {
+        }
+
+        public FileAttachment(object meta) : base(meta)
+        {
+        }
+
+        public virtual string FileName { get; }
+        public virtual string MimeType { get; }
+        public virtual long FileSize { get; }
+        public string ReadableFileSize => _readableFileSize();
+
+
+        private static string _generateDefaultFileName(string mimeType)
+        {
+            return $"noname{MimeTypesMap.GetExtension(mimeType)}";
+        }
+
+        /**
+         * Get human-readable file size
+         * @url https://www.somacon.com/p576.php
+         */
+        private string _readableFileSize()
+        {
+            // Get absolute value
+            var absoluteI = FileSize < 0 ? -FileSize : FileSize;
+            // Determine the suffix and readable value
+            string suffix;
+            double readable;
+            if (absoluteI >= 0x1000000000000000) // Exabyte
+            {
+                suffix = "EB";
+                readable = FileSize >> 50;
+            }
+            else if (absoluteI >= 0x4000000000000) // Petabyte
+            {
+                suffix = "PB";
+                readable = FileSize >> 40;
+            }
+            else if (absoluteI >= 0x10000000000) // Terabyte
+            {
+                suffix = "TB";
+                readable = FileSize >> 30;
+            }
+            else if (absoluteI >= 0x40000000) // Gigabyte
+            {
+                suffix = "GB";
+                readable = FileSize >> 20;
+            }
+            else if (absoluteI >= 0x100000) // Megabyte
+            {
+                suffix = "MB";
+                readable = FileSize >> 10;
+            }
+            else if (absoluteI >= 0x400) // Kilobyte
+            {
+                suffix = "KB";
+                readable = FileSize;
+            }
+            else
+            {
+                return FileSize.ToString("0 B"); // Byte
+            }
+
+            // Divide by 1024 to get fractional value
+            readable = readable / 1024;
+            // Return formatted number with suffix
+            return string.Format("{0:0.### }{0}", readable, suffix);
+        }
+
+        public override string ToString()
+        {
+            return $"{FileName} ({ReadableFileSize}) {Url}";
+        }
+    }
+}

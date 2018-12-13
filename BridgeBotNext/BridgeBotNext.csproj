@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>netcoreapp2.1</TargetFramework>
+        <LangVersion>7.3</LangVersion>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Easy.Logger" Version="3.7.2"/>
+        <PackageReference Include="MimeTypesMap" Version="1.0.3"/>
+        <PackageReference Include="MixERP.Net.VCards" Version="1.0.7"/>
+        <PackageReference Include="Telegram.Bot" Version="14.10.0"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Update="log4net.config">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+    </ItemGroup>
+
+</Project>
