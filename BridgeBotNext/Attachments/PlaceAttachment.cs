@@ -4,18 +4,24 @@ namespace BridgeBotNext.Attachments
 {
     public class PlaceAttachment : Attachment
     {
-        public PlaceAttachment(float latitude, float longitude, string title = null, string address = null,
+        public PlaceAttachment(float latitude, float longitude, string name = null, string address = null,
             object meta = null) : base(meta)
         {
             Latitude = latitude;
             Longitude = longitude;
-            Title = title;
+            Name = name;
             Address = address;
+        }
+
+        public PlaceAttachment(float latitude, float longitude, object meta) : base(meta)
+        {
+            Latitude = latitude;
+            Longitude = longitude;
         }
 
         public float Latitude { get; }
         public float Longitude { get; }
-        public string Title { get; }
+        public string Name { get; }
         public string Address { get; }
 
         /**
@@ -30,7 +36,7 @@ namespace BridgeBotNext.Attachments
         {
             var sb = new StringBuilder();
 
-            if (Title != null) sb.AppendFormat("{0} ", Title);
+            if (Name != null) sb.AppendFormat("{0} ", Name);
 
             if (Address != null) sb.AppendFormat("({0}) ", Address);
 

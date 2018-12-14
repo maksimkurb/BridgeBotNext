@@ -1,14 +1,16 @@
+using System;
 using HeyRed.Mime;
 
 namespace BridgeBotNext.Attachments
 {
     public class FileAttachment : Attachment
     {
-        public FileAttachment(string url, object meta = null, string fileName = null, long fileSize = 0,
+        public FileAttachment(string url, object meta = null, string caption = null, string fileName = null, long fileSize = 0,
             string mimeType = null) : base(url, meta)
         {
-            FileName = fileName ?? _generateDefaultFileName(mimeType);
-            MimeType = mimeType ?? MimeTypesMap.GetMimeType(fileName);
+            Caption = caption;
+            FileName = fileName ?? _generateDefaultFileName(url, mimeType);
+            MimeType = mimeType ?? MimeTypesMap.GetMimeType(FileName);
             FileSize = fileSize;
         }
 
@@ -20,15 +22,22 @@ namespace BridgeBotNext.Attachments
         {
         }
 
-        public virtual string FileName { get; }
+        public string Caption { get; }
+        public string FileName { get; }
         public virtual string MimeType { get; }
         public virtual long FileSize { get; }
         public string ReadableFileSize => _readableFileSize();
 
 
-        private static string _generateDefaultFileName(string mimeType)
+        private static string _generateDefaultFileName(string url, string mimeType)
         {
-            return $"noname{MimeTypesMap.GetExtension(mimeType)}";
+            var fileName = System.IO.Path.GetFileName(new Uri(url).LocalPath) ?? "noname";
+            if (!string.IsNullOrEmpty(mimeType) && MimeTypesMap.GetMimeType(fileName) != mimeType.ToLower())
+            {
+                return $"{fileName}{MimeTypesMap.GetExtension(mimeType)}";
+            }
+
+            return fileName;
         }
 
         /**
@@ -85,7 +94,7 @@ namespace BridgeBotNext.Attachments
 
         public override string ToString()
         {
-            return $"{FileName} ({ReadableFileSize}) {Url}";
+            return $"{FileName} ({ReadableFileSize}) {Url}\n{Caption}";
         }
     }
 }

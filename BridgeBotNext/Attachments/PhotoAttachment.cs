@@ -1,8 +1,9 @@
+using BridgeBotNext.Providers.Tg;
+
 namespace BridgeBotNext.Attachments
 {
-    public class PhotoAttachment : FileAttachment
+    public class PhotoAttachment : FileAttachment, IAlbumAttachment
     {
-        public string Description { get; }
         
         public PhotoAttachment(string url, object meta) : base(url, meta)
         {
@@ -11,20 +12,11 @@ namespace BridgeBotNext.Attachments
 
         public PhotoAttachment(string url,
             object meta = null,
+            string caption = null,
             string fileName = null,
             long fileSize = 0,
-            string mimeType = null) : base(url, meta, fileName, fileSize, mimeType)
+            string mimeType = null) : base(url, meta, caption, fileName, fileSize, mimeType)
         {
-        }
-
-        public PhotoAttachment(string description,
-            string url,
-            object meta = null,
-            string fileName = null,
-            long fileSize = 0,
-            string mimeType = null) : base(url, meta, fileName, fileSize, mimeType)
-        {
-            Description = description;
         }
 
     }

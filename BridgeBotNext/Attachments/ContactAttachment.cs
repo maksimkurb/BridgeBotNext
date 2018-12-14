@@ -59,7 +59,6 @@ namespace BridgeBotNext.Attachments
          */
         public override string Url => $"data:text/vcard;base64,{Convert.ToBase64String(Encoding.UTF8.GetBytes(VCard))}";
 
-        public override string FileName => "contact.vcf";
         public override long FileSize => VCard.Length;
         public override string MimeType => "text/vcf";
     }

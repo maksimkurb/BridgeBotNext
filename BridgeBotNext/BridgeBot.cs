@@ -5,7 +5,9 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using BridgeBotNext.Attachments;
 using BridgeBotNext.Providers;
+using BridgeBotNext.Providers.Tg;
 using Easy.Logger.Interfaces;
 
 namespace BridgeBotNext

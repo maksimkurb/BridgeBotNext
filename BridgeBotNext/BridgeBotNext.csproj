@@ -10,6 +10,8 @@
         <PackageReference Include="Easy.Logger" Version="3.7.2"/>
         <PackageReference Include="MimeTypesMap" Version="1.0.3"/>
         <PackageReference Include="MixERP.Net.VCards" Version="1.0.7"/>
+        <PackageReference Include="MoreLinq.Portable" Version="2.0.0-beta04"/>
+        <PackageReference Include="SkiaSharp" Version="1.68.0"/>
         <PackageReference Include="Telegram.Bot" Version="14.10.0"/>
     </ItemGroup>
 

@@ -1,4 +1,4 @@
-namespace BridgeBotNext.Providers
+namespace BridgeBotNext.Providers.Tg
 {
     /// <inheritdoc />
     public class TelegramPerson: Person
