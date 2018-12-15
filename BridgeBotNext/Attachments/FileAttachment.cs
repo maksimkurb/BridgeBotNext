@@ -31,10 +31,14 @@ namespace BridgeBotNext.Attachments
 
         private static string _generateDefaultFileName(string url, string mimeType)
         {
-            var fileName = System.IO.Path.GetFileName(new Uri(url).LocalPath) ?? "noname";
+            var fileName = System.IO.Path.GetFileName(new Uri(url).LocalPath);
+            if (string.IsNullOrEmpty(fileName))
+            {
+                fileName = "noname";
+            }
             if (!string.IsNullOrEmpty(mimeType) && MimeTypesMap.GetMimeType(fileName) != mimeType.ToLower())
             {
-                return $"{fileName}{MimeTypesMap.GetExtension(mimeType)}";
+                return $"{fileName}.{MimeTypesMap.GetExtension(mimeType)}";
             }
 
             return fileName;

@@ -5,14 +5,14 @@ namespace BridgeBotNext.Attachments
 {
     public class AlbumAttachment: Attachment
     {
-        public IEnumerable<IAlbumAttachment> Media { get; }
+        public IEnumerable<IAlbumableAttachment> Media { get; }
 
-        public AlbumAttachment(object meta, IEnumerable<IAlbumAttachment> media) : base(meta)
+        public AlbumAttachment(IEnumerable<IAlbumableAttachment> media, object meta) : base(meta)
         {
             Media = media;
         }
 
-        public AlbumAttachment(string url, object meta, IEnumerable<IAlbumAttachment> media) : base(url, meta)
+        public AlbumAttachment(IEnumerable<IAlbumableAttachment> media, object meta = null, string url = null) : base(url, meta)
         {
             Media = media;
         }

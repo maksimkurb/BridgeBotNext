@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 
 namespace BridgeBotNext.Providers
 {
- public abstract class Provider
+ public abstract class Provider: IDisposable
  {
   protected Provider() {}
 
@@ -57,6 +57,21 @@ namespace BridgeBotNext.Providers
    handler?.Invoke(this, e);
   }
 
+  /**
+   * Command received event
+   */
+  public event EventHandler<MessageEventArgs> CommandReceived;
+  
+  protected virtual void OnCommandReceived(MessageEventArgs e)
+  {
+   var handler = CommandReceived;
+   handler?.Invoke(this, e);
+  }
 
+
+  public virtual void Dispose()
+  {
+   Disconnect();
+  }
  }
 }

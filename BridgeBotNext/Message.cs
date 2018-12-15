@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using BridgeBotNext.Attachments;
 
 namespace BridgeBotNext
@@ -8,10 +9,10 @@ namespace BridgeBotNext
         public Person OriginSender { get; }
 
         public string Body { get; }
-        public Message[] ForwardedMessages { get; }
-        public Attachment[] Attachments { get; }
+        public IEnumerable<Message> ForwardedMessages { get; }
+        public IEnumerable<Attachment> Attachments { get; }
 
-        public Message(Conversation originConversation, Person originSender, string body, Message[] forwardedMessages, Attachment[] attachments)
+        public Message(Conversation originConversation = null, Person originSender = null, string body = null, IEnumerable<Message> forwardedMessages = null, IEnumerable<Attachment> attachments = null)
         {
             OriginConversation = originConversation;
             OriginSender = originSender;
@@ -20,11 +21,13 @@ namespace BridgeBotNext
             Attachments = attachments;
         }
 
-        public Message(Conversation originConversation, Person originSender, string body)
+        public Message(string body): this(null, null, body)
         {
-            OriginConversation = originConversation;
-            OriginSender = originSender;
-            Body = body;
+        }
+
+        public static implicit operator Message(string body)
+        {
+            return new Message(body);
         }
     }
 }

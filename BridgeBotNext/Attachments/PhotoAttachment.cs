@@ -2,7 +2,7 @@ using BridgeBotNext.Providers.Tg;
 
 namespace BridgeBotNext.Attachments
 {
-    public class PhotoAttachment : FileAttachment, IAlbumAttachment
+    public class PhotoAttachment : FileAttachment, IAlbumableAttachment
     {
         
         public PhotoAttachment(string url, object meta) : base(url, meta)
