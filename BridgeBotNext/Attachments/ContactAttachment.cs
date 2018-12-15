@@ -41,9 +41,9 @@ namespace BridgeBotNext.Attachments
                 LastName = lastName
             };
 
-            if (phone != null) generatedVCard.Telephones.Append(new Telephone {Number = phone});
+            if (string.IsNullOrEmpty(phone)) generatedVCard.Telephones.Append(new Telephone {Number = phone});
 
-            if (email != null) generatedVCard.Emails.Append(new Email {EmailAddress = email});
+            if (string.IsNullOrEmpty(email)) generatedVCard.Emails.Append(new Email {EmailAddress = email});
 
             VCard = generatedVCard.Serialize();
         }

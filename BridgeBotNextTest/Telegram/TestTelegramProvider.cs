@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using BridgeBotNext;
 using BridgeBotNext.Providers.Tg;
@@ -8,7 +7,7 @@ using Telegram.Bot.Types.ReplyMarkups;
 
 namespace BridgeBotNextTest
 {
-    public class TestTelegramProvider: TelegramProvider
+    public class TestTelegramProvider : TelegramProvider
     {
         public TestTelegramProvider(string apiToken) : base(apiToken)
         {
@@ -17,12 +16,13 @@ namespace BridgeBotNextTest
         public void SendTestButtons(Conversation conversation)
         {
             var chat = new ChatId(Convert.ToInt64(conversation.Id));
-            IEnumerable<KeyboardButton> keys = new []
+            IEnumerable<KeyboardButton> keys = new[]
             {
                 new KeyboardButton("/pass"),
-                new KeyboardButton("/fail"),
+                new KeyboardButton("/fail")
             };
-            BotClient.SendTextMessageAsync(chat, "🔹 /pass or /fail 🔹", replyMarkup: new ReplyKeyboardMarkup(keys, true, true));
+            BotClient.SendTextMessageAsync(chat, "🔹 /pass or /fail 🔹",
+                replyMarkup: new ReplyKeyboardMarkup(keys, true, true));
         }
     }
 }

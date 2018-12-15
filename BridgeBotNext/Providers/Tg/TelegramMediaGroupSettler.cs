@@ -7,48 +7,27 @@ namespace BridgeBotNext.Providers.Tg
 {
     public class TelegramMediaGroupSettler
     {
-        private class MediaGroup : IDisposable
-        {
-            public List<Attachment> Attachments { get; } = new List<Attachment>();
-            public Message Message { get; }
-            public Timer Timer { get; } = new Timer(1500);
-
-            public MediaGroup(Message message, ElapsedEventHandler eventHandler)
-            {
-                Message = message;
-                Timer.Elapsed += eventHandler;
-                Timer.Start();
-            }
-
-            public void Dispose()
-            {
-                Timer?.Dispose();
-            }
-        }
-
-        private IDictionary<string, MediaGroup> _mediaGroups = new Dictionary<string, MediaGroup>();
+        private readonly IDictionary<string, MediaGroup> _mediaGroups = new Dictionary<string, MediaGroup>();
 
         public void AddMediaGroupMessage(string mediaGroupId, Message message, Attachment attachment)
         {
             lock (_mediaGroups)
             {
                 // Get media group or create it
-                var mediaGroup = _mediaGroups[mediaGroupId] ?? new MediaGroup(message, ((sender, args) =>
+                var mediaGroup = _mediaGroups[mediaGroupId] ?? new MediaGroup(message, (sender, args) =>
                 {
                     // If timer is timed out, then media group is probably fully received
                     lock (_mediaGroups)
                     {
                         if (MediaGroupReceived != null)
-                        {
                             MediaGroupReceived(this,
                                 new MediaGroupEventArgs(_mediaGroups[mediaGroupId].Message,
                                     _mediaGroups[mediaGroupId].Attachments.ToArray()));
-                        }
 
                         _mediaGroups[mediaGroupId].Dispose();
                         _mediaGroups.Remove(mediaGroupId);
                     }
-                }));
+                });
 
                 // Add new attachment to it
                 mediaGroup.Attachments.Add(attachment);
@@ -58,11 +37,9 @@ namespace BridgeBotNext.Providers.Tg
                 if (mediaGroup.Attachments.Count >= 10)
                 {
                     if (MediaGroupReceived != null)
-                    {
                         MediaGroupReceived(this,
                             new MediaGroupEventArgs(_mediaGroups[mediaGroupId].Message,
                                 _mediaGroups[mediaGroupId].Attachments.ToArray()));
-                    }
 
                     mediaGroup.Dispose();
                     _mediaGroups.Remove(mediaGroupId);
@@ -72,21 +49,40 @@ namespace BridgeBotNext.Providers.Tg
             ;
         }
 
+        /**
+         * All (may be) messages with the same mediaGroupId are catched
+         */
+        public event EventHandler<MediaGroupEventArgs> MediaGroupReceived;
+
+        private class MediaGroup : IDisposable
+        {
+            public MediaGroup(Message message, ElapsedEventHandler eventHandler)
+            {
+                Message = message;
+                Timer.Elapsed += eventHandler;
+                Timer.Start();
+            }
+
+            public List<Attachment> Attachments { get; } = new List<Attachment>();
+            public Message Message { get; }
+            public Timer Timer { get; } = new Timer(1500);
+
+            public void Dispose()
+            {
+                Timer?.Dispose();
+            }
+        }
+
         public class MediaGroupEventArgs : EventArgs
         {
-            public Attachment[] Attachments { get; }
-            public Message Message { get; }
-
             public MediaGroupEventArgs(Message message, Attachment[] attachments)
             {
                 Message = message;
                 Attachments = attachments;
             }
-        }
 
-        /**
-         * All (may be) messages with the same mediaGroupId are catched
-         */
-        public event EventHandler<MediaGroupEventArgs> MediaGroupReceived;
+            public Attachment[] Attachments { get; }
+            public Message Message { get; }
+        }
     }
 }

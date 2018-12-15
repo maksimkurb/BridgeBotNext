@@ -6,9 +6,17 @@ namespace BridgeBotNextTest
     public class TelegramProviderTestingPlatformFixture : IDisposable
     {
         public TelegramProviderTestingPlatform TestingPlatform;
+
         public TelegramProviderTestingPlatformFixture()
         {
-            TestingPlatform = new TelegramProviderTestingPlatform(new TestTelegramProvider("655186440:AAFd9V67Mscx3YLxxUsx1VTwdllzyKS7FVQ"));
+            var token = Environment.GetEnvironmentVariable("TELEGRAM_BOT_TOKEN");
+
+            if (string.IsNullOrEmpty(token))
+            {
+                throw new Exception("Please provide Telegram bot token via environment variable TELEGRAM_BOT_TOKEN");
+            }
+
+            TestingPlatform = new TelegramProviderTestingPlatform(new TestTelegramProvider(token));
         }
 
         public void Dispose()
@@ -16,16 +24,15 @@ namespace BridgeBotNextTest
             TestingPlatform?.Dispose();
         }
     }
-    
-    public class TelegramProviderTest: IClassFixture<TelegramProviderTestingPlatformFixture>
+
+    public class TelegramProviderTest : IClassFixture<TelegramProviderTestingPlatformFixture>
     {
-
-        private TelegramProviderTestingPlatformFixture _fixture;
-
         public TelegramProviderTest(TelegramProviderTestingPlatformFixture fixture)
         {
             _fixture = fixture;
         }
+
+        private readonly TelegramProviderTestingPlatformFixture _fixture;
 
         [Fact]
         public async void PlainMessageTest()
@@ -43,6 +50,12 @@ namespace BridgeBotNextTest
         public async void AlbumAttachmentTest()
         {
             Assert.True(await _fixture.TestingPlatform.AlbumAttachment());
+        }
+
+        [Fact]
+        public async void OtherAttachmentsMessageTest()
+        {
+            Assert.True(await _fixture.TestingPlatform.OtherAttachments());
         }
     }
 }

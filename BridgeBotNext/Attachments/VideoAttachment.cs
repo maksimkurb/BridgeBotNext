@@ -1,5 +1,3 @@
-using BridgeBotNext.Providers.Tg;
-
 namespace BridgeBotNext.Attachments
 {
     public class VideoAttachment : FileAttachment, IAlbumableAttachment

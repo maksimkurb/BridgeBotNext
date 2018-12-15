@@ -4,10 +4,6 @@ namespace BridgeBotNext
 {
     public class Conversation
     {
-        public Provider Provider { get; private set; }
-        public string Id { get; private set; }
-        public string Title { get; set; }
-
         public Conversation(Provider provider, string id, string title)
         {
             Provider = provider;
@@ -20,5 +16,9 @@ namespace BridgeBotNext
             Provider = provider;
             Id = id;
         }
+
+        public Provider Provider { get; }
+        public string Id { get; }
+        public string Title { get; set; }
     }
 }

@@ -1,11 +1,13 @@
 using System;
+using System.IO;
 using HeyRed.Mime;
 
 namespace BridgeBotNext.Attachments
 {
     public class FileAttachment : Attachment
     {
-        public FileAttachment(string url, object meta = null, string caption = null, string fileName = null, long fileSize = 0,
+        public FileAttachment(string url, object meta = null, string caption = null, string fileName = null,
+            long fileSize = 0,
             string mimeType = null) : base(url, meta)
         {
             Caption = caption;
@@ -31,15 +33,10 @@ namespace BridgeBotNext.Attachments
 
         private static string _generateDefaultFileName(string url, string mimeType)
         {
-            var fileName = System.IO.Path.GetFileName(new Uri(url).LocalPath);
-            if (string.IsNullOrEmpty(fileName))
-            {
-                fileName = "noname";
-            }
+            var fileName = Path.GetFileName(new Uri(url).LocalPath);
+            if (string.IsNullOrEmpty(fileName)) fileName = "noname";
             if (!string.IsNullOrEmpty(mimeType) && MimeTypesMap.GetMimeType(fileName) != mimeType.ToLower())
-            {
                 return $"{fileName}.{MimeTypesMap.GetExtension(mimeType)}";
-            }
 
             return fileName;
         }

@@ -5,14 +5,8 @@ namespace BridgeBotNext
 {
     public class Message
     {
-        public Conversation OriginConversation { get; }
-        public Person OriginSender { get; }
-
-        public string Body { get; }
-        public IEnumerable<Message> ForwardedMessages { get; }
-        public IEnumerable<Attachment> Attachments { get; }
-
-        public Message(Conversation originConversation = null, Person originSender = null, string body = null, IEnumerable<Message> forwardedMessages = null, IEnumerable<Attachment> attachments = null)
+        public Message(Conversation originConversation = null, Person originSender = null, string body = null,
+            IEnumerable<Message> forwardedMessages = null, IEnumerable<Attachment> attachments = null)
         {
             OriginConversation = originConversation;
             OriginSender = originSender;
@@ -21,9 +15,16 @@ namespace BridgeBotNext
             Attachments = attachments;
         }
 
-        public Message(string body): this(null, null, body)
+        public Message(string body) : this(null, null, body)
         {
         }
+
+        public Conversation OriginConversation { get; }
+        public Person OriginSender { get; }
+
+        public string Body { get; }
+        public IEnumerable<Message> ForwardedMessages { get; }
+        public IEnumerable<Attachment> Attachments { get; }
 
         public static implicit operator Message(string body)
         {

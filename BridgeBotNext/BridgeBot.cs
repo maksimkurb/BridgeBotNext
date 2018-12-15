@@ -1,28 +1,23 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Reflection;
-using System.Threading;
 using System.Threading.Tasks;
-using BridgeBotNext.Attachments;
 using BridgeBotNext.Providers;
 using BridgeBotNext.Providers.Tg;
-using Easy.Logger.Interfaces;
 
 namespace BridgeBotNext
 {
-    class BridgeBot
+    internal class BridgeBot
     {
-        static void Main(string[] args)
+        private static void Main(string[] args)
         {
-            IEasyLogger logger =
+            var logger =
                 Logging.LogService.GetLogger<BridgeBot>();
 
-            List<Provider> providers = new List<Provider>();
+            var providers = new List<Provider>();
 
             // Telegram
-            string telegramBotToken = Environment.GetEnvironmentVariable("TELEGRAM_BOT_TOKEN");
+            var telegramBotToken = Environment.GetEnvironmentVariable("TELEGRAM_BOT_TOKEN");
             if (telegramBotToken != null)
                 providers.Add(new TelegramProvider(telegramBotToken));
 
@@ -37,8 +32,8 @@ namespace BridgeBotNext
 
             logger.InfoFormat("Running bot with providers: {0}", string.Join(" ", providers.Select(prov => prov.Name)));
 
-            Task connectionTask = Task.WhenAll(providers.Select(prov => prov.Connect()));
-            bool done = connectionTask.Wait(60000);
+            var connectionTask = Task.WhenAll(providers.Select(prov => prov.Connect()));
+            var done = connectionTask.Wait(60000);
             if (!done)
             {
                 logger.Error("Connection to some providers is timed out");
@@ -61,7 +56,7 @@ namespace BridgeBotNext
 
             ConsoleHost.WaitForShutdown();
 
-            Task disconnectionTask = Task.WhenAll(providers.Select(prov => prov.Disconnect()));
+            var disconnectionTask = Task.WhenAll(providers.Select(prov => prov.Disconnect()));
             logger.Info("Graceful shutdown");
             done = disconnectionTask.Wait(15000);
             if (!done)

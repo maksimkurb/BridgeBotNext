@@ -2,7 +2,7 @@ using System;
 
 namespace BridgeBotNext.Attachments
 {
-    public class UnsupportedAttachmentException: Exception
+    public class UnsupportedAttachmentException : Exception
     {
         public UnsupportedAttachmentException()
         {

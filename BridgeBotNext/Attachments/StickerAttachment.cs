@@ -10,6 +10,5 @@ namespace BridgeBotNext.Attachments
             string mimeType = null) : base(url, meta, null, fileName, fileSize, mimeType)
         {
         }
-
     }
 }

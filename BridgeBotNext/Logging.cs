@@ -1,5 +1,3 @@
-using System.IO;
-using System.Reflection;
 using Easy.Logger;
 using Easy.Logger.Interfaces;
 
