@@ -41,6 +41,12 @@ namespace BridgeBotNextTest
         }
         
         [Fact]
+        public async void ForwardedMessagesTest()
+        {
+            Assert.True(await _fixture.TestingPlatform.ForwardedMessages());
+        }
+        
+        [Fact]
         public async void MediaAttachmentTest()
         {
             Assert.True(await _fixture.TestingPlatform.MediaAttachment());
@@ -56,6 +62,13 @@ namespace BridgeBotNextTest
         public async void OtherAttachmentsMessageTest()
         {
             Assert.True(await _fixture.TestingPlatform.OtherAttachments());
+        }
+        
+             
+        [Fact]
+        public async void ForwardedMessagesWithAttachmentsTest()
+        {
+            Assert.True(await _fixture.TestingPlatform.ForwardedMessagesWithAttachments());
         }
     }
 }

@@ -1,4 +1,7 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace BridgeBotNext.Providers
@@ -35,6 +38,51 @@ namespace BridgeBotNext.Providers
          * Send message to provider
          */
         public abstract Task SendMessage(Conversation conversation, Message message);
+
+        public virtual string FormatForwardedMessages(IEnumerable<(Message Item, int Level)> messages)
+        {
+            StringBuilder sb = new StringBuilder();
+
+            Person prevSender = null;
+            int prevLevel = 0;
+            foreach (var (msg, level) in messages)
+            {
+                if (msg.OriginSender != null)
+                {
+                    if (prevSender == null || prevLevel != level || !prevSender.Equals(msg.OriginSender)) {
+                        sb.Append("|");
+                        for (int i = 0; i <= level; i++)
+                        {
+                            sb.Append("›");
+                        }
+    
+                        sb.Append(FormatSender(msg.OriginSender));
+                        sb.Append("\n");
+                    }
+                }
+                var rows = msg.Body.Split("\n");
+                foreach (var row in rows)
+                {
+                    sb.Append("|");
+                    for (int i = 0; i <= level; i++)
+                    {
+                        sb.Append("›");
+                    }
+                    sb.Append(row);
+                    sb.Append("\n");
+                }
+
+                prevSender = msg.OriginSender;
+                prevLevel = level;
+            }
+
+            return sb.ToString();
+        }
+
+        public virtual string FormatSender(Person sender)
+        {
+            return $"💬 {sender.DisplayName}:";
+        }
 
         /**
          * Message received event
