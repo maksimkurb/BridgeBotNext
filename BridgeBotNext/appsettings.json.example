@@ -1,0 +1,9 @@
+{
+  "Vk": {
+    "AccessToken": "abcdef",
+    "GroupId": 123456
+  },
+  "Tg": {
+    "BotToken": "123456:abcdef"
+  }
+}

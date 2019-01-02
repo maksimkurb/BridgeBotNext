@@ -1,15 +1,19 @@
 using System;
 using System.Collections.Generic;
 using BridgeBotNext;
+using BridgeBotNext.Configuration;
 using BridgeBotNext.Providers.Tg;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
 
-namespace BridgeBotNextTest
+namespace BridgeBotNextTest.Telegram
 {
-    public class TestTelegramProvider : TelegramProvider
+    public class TestTgProvider : TgProvider
     {
-        public TestTelegramProvider(string apiToken) : base(apiToken)
+        public TestTgProvider(ILogger<TgProvider> logger, IOptions<TgConfiguration> configuration) : base(logger,
+            configuration)
         {
         }
 

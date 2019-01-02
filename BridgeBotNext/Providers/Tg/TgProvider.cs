@@ -1,37 +1,38 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using BridgeBotNext.Attachments;
-using Easy.Logger.Interfaces;
+using BridgeBotNext.Configuration;
 using HeyRed.Mime;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using MoreLinq;
 using SkiaSharp;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.InputFiles;
-using File = Telegram.Bot.Types.File;
 
 namespace BridgeBotNext.Providers.Tg
 {
     /// <inheritdoc />
-    public class TelegramProvider : Provider
+    public class TgProvider : Provider
     {
         private readonly string _apiToken;
-        private readonly TelegramMediaGroupSettler _mediaGroupSettler = new TelegramMediaGroupSettler();
+        private readonly TgMediaGroupSettler _mediaGroupSettler = new TgMediaGroupSettler();
         protected readonly TelegramBotClient BotClient;
-        protected readonly IEasyLogger Logger = Logging.LogService.GetLogger<TelegramProvider>();
+        protected readonly ILogger<TgProvider> Logger;
 
-        public TelegramProvider(string apiToken)
+        public TgProvider(ILogger<TgProvider> logger, IOptions<TgConfiguration> configuration)
         {
-            _apiToken = apiToken;
-            BotClient = new TelegramBotClient(apiToken);
+            _apiToken = configuration.Value.BotToken;
+            BotClient = new TelegramBotClient(_apiToken);
             BotClient.OnMessage += _onMessage;
+
+            Logger = logger;
 
             _mediaGroupSettler.MediaGroupReceived += _onMediaGroupMessage;
         }
@@ -44,7 +45,7 @@ namespace BridgeBotNext.Providers.Tg
             if (!BotClient.IsReceiving)
             {
                 var me = await BotClient.GetMeAsync();
-                Logger.DebugFormat("Telegram bot @{0} ({1} {2}) connected", me.Username, me.FirstName, me.LastName);
+                Logger.LogDebug("Telegram bot @{0} ({1} {2}) connected", me.Username, me.FirstName, me.LastName);
                 BotClient.StartReceiving();
             }
         }
@@ -53,82 +54,89 @@ namespace BridgeBotNext.Providers.Tg
         {
             if (BotClient.IsReceiving)
             {
-                Logger.DebugFormat("Telegram bot stops receiving events");
-                BotClient.StopReceiving();   
+                Logger.LogDebug("Telegram bot stops receiving events");
+                BotClient.StopReceiving();
             }
         }
 
-        public override string FormatSender(Person sender)
+        protected override string FormatSender(Person sender)
         {
-            return $"💬 [{sender.DisplayName}]({sender.ProfileUrl}):";
+            return $"💬 <a href=\"{sender.ProfileUrl}\">{sender.DisplayName}</a>:";
         }
 
         public override async Task SendMessage(Conversation conversation, Message message)
         {
+            Logger.LogTrace("Send message to conversation {0}", conversation.Id);
             var chat = new ChatId(Convert.ToInt64(conversation.Id));
 
-            var fwdExpanded = message.ForwardedMessages?
-                .ExpandWithLevel(el => el.ForwardedMessages);
-            var fwd = fwdExpanded as (Message Item, int Level)[] ?? fwdExpanded?.ToArray();
+            #region Get forwarded and attachments
 
-            List<Attachment> attachments = new List<Attachment>();
-            
-            if (!fwd.IsNullOrEmpty())
+            var fwd = FlattenForwardedMessages(message);
+            var attachments = GetAllAttachments(message, fwd);
+
+            #endregion
+
+            #region Send message
+
+            var body = FormatMessageBody(message, fwd);
+            if (body.Length > 0)
             {
-                attachments.AddRange(fwd
-                    .Select(e => e.Item)
-                    .Where(msg => !msg.Attachments.IsNullOrEmpty())
-                    .SelectMany(msg => msg.Attachments)
-                );
-            }
-            
-            if (!message.Attachments.IsNullOrEmpty())
-            {
-                attachments.AddRange(message.Attachments);
+                await BotClient.SendTextMessageAsync(new ChatId(conversation.Id), body, ParseMode.Html);
             }
 
-            
+            #endregion
+
+            #region Send attachments
+
             if (attachments.Any())
             {
-                Logger.Trace("Sending message with attachments");
+                Logger.LogTrace("Sending message with attachments");
 
-                foreach (var at in attachments)
+                var groupableAttachments = attachments.OfType<ITgGroupableAttachment>();
+
+                Func<ITgGroupableAttachment, IAlbumInputMedia> AlbumAttachmentSelector()
                 {
-                    if (at is AlbumAttachment album)
+                    return media =>
                     {
-                        Func<IAlbumableAttachment, IAlbumInputMedia> AlbumAttachmentSelector()
+                        switch (media)
                         {
-                            return media =>
+                            case PhotoAttachment albumPhoto:
                             {
-                                if (media is PhotoAttachment albumPhoto)
-                                {
-                                    var tgPhoto = new InputMediaPhoto(new InputMedia(albumPhoto.Url));
-                                    tgPhoto.Caption = albumPhoto.Caption;
-                                    return tgPhoto;
-                                }
-
-                                if (media is VideoAttachment albumVideo)
-                                {
-                                    var tgVideo = new InputMediaVideo(albumVideo.Url);
-                                    tgVideo.Caption = albumVideo.Caption;
-                                    return tgVideo;
-                                }
-
+                                var tgPhoto = new InputMediaPhoto(new InputMedia(albumPhoto.Url));
+                                tgPhoto.Caption = albumPhoto.Caption;
+                                return tgPhoto;
+                            }
+                            case VideoAttachment albumVideo:
+                            {
+                                var tgVideo = new InputMediaVideo(albumVideo.Url);
+                                tgVideo.Caption = albumVideo.Caption;
+                                tgVideo.Duration = albumVideo.Duration ?? 0;
+                                tgVideo.Width = albumVideo.Width;
+                                tgVideo.Height = albumVideo.Height;
+                                return tgVideo;
+                            }
+                            default:
                                 return null;
-                            };
                         }
+                    };
+                }
 
-                        var chunks = album.Media
-                            .Select((val, i) => (val, i))
-                            .GroupBy(tuple => tuple.i / 10);
+                var chunks = groupableAttachments
+                    .Select((val, i) => (val, i))
+                    .GroupBy(tuple => tuple.i / 10);
 
-                        foreach (var chunk in chunks)
-                        {
-                            await BotClient.SendMediaGroupAsync(chunk.Select(x => x.val).Select(AlbumAttachmentSelector()), chat);
-                        }
-                    }
-                    else if (at is AnimationAttachment animation)
-                        await BotClient.SendAnimationAsync(chat, _getInputFile(message, animation), animation.Duration,
+                foreach (var chunk in chunks)
+                {
+                    await BotClient.SendMediaGroupAsync(
+                        chunk.Select(x => x.val).Select(AlbumAttachmentSelector()), chat);
+                }
+
+                var restAttachments = attachments.Where(at => !(at is ITgGroupableAttachment));
+                foreach (var at in restAttachments)
+                {
+                    if (at is AnimationAttachment animation)
+                        await BotClient.SendAnimationAsync(chat, _getInputFile(message, animation),
+                            animation.Duration ?? 0,
                             animation.Width,
                             animation.Height, caption: animation.Caption);
                     else if (at is VoiceAttachment voice)
@@ -136,11 +144,12 @@ namespace BridgeBotNext.Providers.Tg
                         var req = (HttpWebRequest) WebRequest.Create(voice.Url);
                         req.Timeout = 15000;
                         var resp = (HttpWebResponse) req.GetResponse();
-                        await BotClient.SendVoiceAsync(chat, new InputOnlineFile(resp.GetResponseStream(), voice.FileName), voice.Caption);
+                        await BotClient.SendVoiceAsync(chat,
+                            new InputOnlineFile(resp.GetResponseStream(), voice.FileName), voice.Caption);
                     }
                     else if (at is AudioAttachment audio)
                         await BotClient.SendAudioAsync(chat, _getInputFile(message, audio), audio.Caption,
-                            duration: audio.Duration,
+                            duration: audio.Duration ?? 0,
                             performer: audio.Performer, title: audio.Title);
                     else if (at is ContactAttachment contact)
                         await BotClient.SendContactAsync(chat, contact.Phone, contact.FirstName, contact.LastName,
@@ -153,8 +162,10 @@ namespace BridgeBotNext.Providers.Tg
                         if (sticker.MimeType == "image/webp")
                         {
                             await BotClient.SendStickerAsync(chat, inputFile);
-                        } else {
-                            Logger.Trace("Converting sticker to webp format");
+                        }
+                        else
+                        {
+                            Logger.LogTrace("Converting sticker to webp format");
                             var req = (HttpWebRequest) WebRequest.Create(inputFile.Url);
                             req.Timeout = 15000;
                             var resp = (HttpWebResponse) req.GetResponse();
@@ -166,53 +177,33 @@ namespace BridgeBotNext.Providers.Tg
                             }
                         }
                     }
-                    else if (at is PhotoAttachment photo)
-                        await BotClient.SendPhotoAsync(chat, _getInputFile(message, photo), photo.Caption);
                     else if (at is PlaceAttachment place)
                     {
                         if (place.Name != null || place.Address != null)
-                            await BotClient.SendVenueAsync(chat, place.Latitude, place.Longitude, place.Name,
+                            await BotClient.SendVenueAsync(chat, (float) place.Latitude, (float) place.Longitude,
+                                place.Name,
                                 place.Address);
                         else
-                            await BotClient.SendLocationAsync(chat, place.Latitude, place.Longitude);
+                            await BotClient.SendLocationAsync(chat, (float) place.Latitude, (float) place.Longitude);
                     }
-                    else if (at is VideoAttachment video)
-                        await BotClient.SendVideoAsync(chat, _getInputFile(message, video), video.Duration,
-                            video.Width,
-                            video.Height,
-                            video.Caption);
                     else if (at is FileAttachment file)
                     {
-                        if (file.MimeType == "image/gif" || file.MimeType == "application/pdf" || file.MimeType == "application/zip")
+                        if (file.MimeType == "image/gif" || file.MimeType == "application/pdf" ||
+                            file.MimeType == "application/zip")
                             await BotClient.SendDocumentAsync(chat, _getInputFile(message, file), file.Caption);
                         else
                         {
                             var req = (HttpWebRequest) WebRequest.Create(file.Url);
                             req.Timeout = 15000;
                             var resp = (HttpWebResponse) req.GetResponse();
-                            await BotClient.SendDocumentAsync(chat, new InputOnlineFile(resp.GetResponseStream(), file.FileName), file.Caption);
+                            await BotClient.SendDocumentAsync(chat,
+                                new InputOnlineFile(resp.GetResponseStream(), file.FileName), file.Caption);
                         }
                     }
                 }
             }
 
-            var body = new StringBuilder();
-
-            if (message.OriginSender != null)
-            {
-                body.AppendLine(FormatSender(message.OriginSender));
-            }
-            
-            if (!fwd.IsNullOrEmpty())
-            {
-                body.AppendLine(FormatForwardedMessages(fwd));
-            }
-
-            if (!string.IsNullOrEmpty(message.Body))
-            {
-                body.AppendLine(message.Body);
-            }
-            await BotClient.SendTextMessageAsync(new ChatId(conversation.Id), body.ToString(), ParseMode.Markdown);
+            #endregion
         }
 
         private InputOnlineFile _getInputFile(Message message, Attachment attachment)
@@ -245,12 +236,12 @@ namespace BridgeBotNext.Providers.Tg
             return new Conversation(this, tgChat.Id.ToString(), tgChat.Title);
         }
 
-        private TelegramPerson _extractPerson(User tgUser)
+        private TgPerson _extractPerson(User tgUser)
         {
             var fullName = new StringBuilder().Append(tgUser.FirstName);
             if (tgUser.LastName != null)
                 fullName.AppendFormat(" {0}", tgUser.LastName);
-            return new TelegramPerson(this, tgUser.Username, fullName.ToString());
+            return new TgPerson(this, tgUser.Username, fullName.ToString());
         }
 
         /**
@@ -348,30 +339,45 @@ namespace BridgeBotNext.Providers.Tg
 
         private async Task<Message> _extractMessage(Telegram.Bot.Types.Message tgMessage, bool ignoreForwarded = true)
         {
+            Logger.LogTrace("Message received");
             var forwarded = await _extractForwarded(tgMessage);
             var conversation = _extractConversation(tgMessage.Chat);
-            Person person = _extractPerson(tgMessage.From);
-            
+            var person = _extractPerson(tgMessage.From);
+
             if (ignoreForwarded && tgMessage.ForwardFrom != null)
             {
                 return new Message(conversation, person, forwardedMessages: forwarded);
             }
-            
-            var attachment = await _extractAttachment(tgMessage);
-            return new Message(conversation, person, tgMessage.Text, forwarded, new[] {attachment});
+
+            var attachments = new List<Attachment>();
+            var at = await _extractAttachment(tgMessage);
+            if (at != null)
+            {
+                attachments.Add(at);
+            }
+
+            if (tgMessage.Entities != null)
+            {
+                attachments.AddRange((from entity in tgMessage.Entities
+                    where entity.Type == MessageEntityType.TextLink
+                    select new LinkAttachment(entity.Url)));
+            }
+
+            return new Message(conversation, person, tgMessage.Text, forwarded, attachments);
         }
 
         private async Task<IEnumerable<Message>> _extractForwarded(Telegram.Bot.Types.Message tgMessage)
         {
             if (tgMessage.ReplyToMessage != null)
             {
-                return new Message[]
+                return new[]
                 {
                     await _extractMessage(tgMessage.ReplyToMessage)
                 };
-            } else if (tgMessage.ForwardFrom != null)
+            }
+            else if (tgMessage.ForwardFrom != null)
             {
-                return new Message[]
+                return new[]
                 {
                     await _extractMessage(tgMessage.ReplyToMessage, false)
                 };
@@ -399,19 +405,12 @@ namespace BridgeBotNext.Providers.Tg
             OnMessageReceived(new MessageEventArgs(message));
         }
 
-        private void _onMediaGroupMessage(object sender, TelegramMediaGroupSettler.MediaGroupEventArgs e)
+        private void _onMediaGroupMessage(object sender, TgMediaGroupSettler.MediaGroupEventArgs e)
         {
             var oldMessage = e.Message;
 
-            var albumAttachments = e.Attachments.OfType<IAlbumableAttachment>();
-            var otherAttachments = e.Attachments.Where(at => !(at is IAlbumableAttachment)).ToArray();
-
-            var attachments = new Attachment[otherAttachments.Length + 1];
-            attachments[0] = new AlbumAttachment(null, albumAttachments);
-            otherAttachments.CopyTo(attachments, 1);
-
             var message = new Message(oldMessage.OriginConversation, oldMessage.OriginSender, oldMessage.Body,
-                oldMessage.ForwardedMessages, attachments);
+                oldMessage.ForwardedMessages, e.Attachments);
             OnMessageReceived(new MessageEventArgs(message));
         }
     }

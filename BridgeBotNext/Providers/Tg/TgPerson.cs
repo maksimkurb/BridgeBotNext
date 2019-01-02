@@ -1,9 +1,9 @@
 namespace BridgeBotNext.Providers.Tg
 {
     /// <inheritdoc />
-    public class TelegramPerson : Person
+    public class TgPerson : Person
     {
-        public TelegramPerson(TelegramProvider provider, string id, string displayName)
+        public TgPerson(TgProvider provider, string id, string displayName)
         {
             Provider = provider;
             Id = id;

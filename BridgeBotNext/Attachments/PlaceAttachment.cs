@@ -1,10 +1,11 @@
 using System.Text;
+using BridgeBotNext.Providers.Vk;
 
 namespace BridgeBotNext.Attachments
 {
-    public class PlaceAttachment : Attachment
+    public class PlaceAttachment : Attachment, IVkSpecialAttachment
     {
-        public PlaceAttachment(float latitude, float longitude, string name = null, string address = null,
+        public PlaceAttachment(double latitude, double longitude, string name = null, string address = null,
             object meta = null) : base(meta)
         {
             Latitude = latitude;
@@ -13,14 +14,14 @@ namespace BridgeBotNext.Attachments
             Address = address;
         }
 
-        public PlaceAttachment(float latitude, float longitude, object meta) : base(meta)
+        public PlaceAttachment(double latitude, double longitude, object meta) : base(meta)
         {
             Latitude = latitude;
             Longitude = longitude;
         }
 
-        public float Latitude { get; }
-        public float Longitude { get; }
+        public double Latitude { get; }
+        public double Longitude { get; }
         public string Name { get; }
         public string Address { get; }
 

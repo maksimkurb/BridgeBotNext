@@ -1,6 +1,6 @@
 namespace BridgeBotNext.Attachments
 {
-    public interface IAlbumableAttachment
+    public interface ITgGroupableAttachment
     {
     }
 }

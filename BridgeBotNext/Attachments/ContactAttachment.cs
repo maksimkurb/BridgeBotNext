@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Text;
+using BridgeBotNext.Providers.Vk;
 using MixERP.Net.VCards;
 using MixERP.Net.VCards.Models;
 using MixERP.Net.VCards.Serializer;
@@ -8,9 +9,13 @@ using MixERP.Net.VCards.Types;
 
 namespace BridgeBotNext.Attachments
 {
-    public class ContactAttachment : FileAttachment
+    public class ContactAttachment : FileAttachment, IVkSpecialAttachment
     {
-        public ContactAttachment(string vCard, object meta = null) : base(meta)
+        public ContactAttachment(object meta) : base(null, meta, fileName: "contact.vcf", mimeType: "text/vcard")
+        {
+        }
+
+        public ContactAttachment(string vCard, object meta = null) : this(meta)
         {
             var vcards = Deserializer.GetVCards(vCard);
             var vCards = vcards as VCard[] ?? vcards.ToArray();
@@ -26,7 +31,7 @@ namespace BridgeBotNext.Attachments
         }
 
         public ContactAttachment(string firstName, string lastName, string phone, string email, object meta = null) :
-            base(meta)
+            this(meta)
         {
             FirstName = firstName;
             LastName = lastName;
@@ -41,9 +46,25 @@ namespace BridgeBotNext.Attachments
                 LastName = lastName
             };
 
-            if (string.IsNullOrEmpty(phone)) generatedVCard.Telephones.Append(new Telephone {Number = phone});
+            if (!string.IsNullOrEmpty(phone))
+                generatedVCard.Telephones = new[]
+                {
+                    new Telephone
+                    {
+                        Type = TelephoneType.Cell,
+                        Number = phone
+                    }
+                };
 
-            if (string.IsNullOrEmpty(email)) generatedVCard.Emails.Append(new Email {EmailAddress = email});
+            if (!string.IsNullOrEmpty(email))
+                generatedVCard.Emails = new[]
+                {
+                    new Email
+                    {
+                        Type = EmailType.Smtp,
+                        EmailAddress = email
+                    }
+                };
 
             VCard = generatedVCard.Serialize();
         }
@@ -59,7 +80,37 @@ namespace BridgeBotNext.Attachments
          */
         public override string Url => $"data:text/vcard;base64,{Convert.ToBase64String(Encoding.UTF8.GetBytes(VCard))}";
 
-        public override long FileSize => VCard.Length;
+        public override long? FileSize => VCard.Length;
         public override string MimeType => "text/vcf";
+
+        public override string ToString()
+        {
+            var sb = new StringBuilder("☎ ");
+
+            if (!string.IsNullOrEmpty(FirstName))
+            {
+                sb.Append(FirstName);
+                sb.Append(" ");
+            }
+
+            if (!string.IsNullOrEmpty(LastName))
+            {
+                sb.Append(LastName);
+                sb.Append(" ");
+            }
+
+            if (!string.IsNullOrEmpty(Phone))
+            {
+                sb.Append(Phone);
+                sb.Append(" ");
+            }
+
+            if (!string.IsNullOrEmpty(Email))
+            {
+                sb.Append(Email);
+            }
+
+            return sb.ToString();
+        }
     }
 }

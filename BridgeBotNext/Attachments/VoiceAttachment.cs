@@ -6,7 +6,7 @@ namespace BridgeBotNext.Attachments
             long fileSize = 0,
             string mimeType = null, string title = null, int duration = 0) : base(url, meta, caption, fileName,
             fileSize,
-            mimeType, title, null, duration)
+            mimeType, "audio/ogg", title, null, duration)
         {
         }
     }

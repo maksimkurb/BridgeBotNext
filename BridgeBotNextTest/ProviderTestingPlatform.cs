@@ -46,9 +46,9 @@ namespace BridgeBotNextTest
         public async Task<bool> ForwardedMessages()
         {
             await StartTest("Should send forwarded messages");
-            var sender1 = new TelegramPerson(null, "BotFather", "Person 1");
-            var sender2 = new TelegramPerson(null, "BotFather", "Person 2");
-            var sender3 = new TelegramPerson(null, "BotFather", "Person 3");
+            var sender1 = new TgPerson(null, "BotFather", "Person 1");
+            var sender2 = new TgPerson(null, "BotFather", "Person 2");
+            var sender3 = new TgPerson(null, "BotFather", "Person 3");
 
             var msg = new Message(originSender: sender1, body: "Test body", forwardedMessages: new[]
             {
@@ -58,13 +58,18 @@ namespace BridgeBotNextTest
                         new Message(originSender: sender3, body: "Below this line there should not be a username"),
                         new Message(originSender: sender3, body: "Now it should be"),
                     }),
+
                 new Message(originSender: sender2, body: "Test fwd 2", forwardedMessages: new[]
                 {
                     new Message(originSender: sender2, body: "Test fwd2.1", forwardedMessages: new[]
                     {
                         new Message(originSender: sender2, body: "Test fwd2.1.1"),
                     }),
-                    new Message(originSender: sender3, body: "Test fwd2.2"),
+                    new Message(originSender: sender2, body: "Test fwd2.2", forwardedMessages: new[]
+                    {
+                        new Message(originSender: sender2, body: "Test fwd2.2.1"),
+                    }),
+                    new Message(originSender: sender3, body: "Test fwd2.3"),
                 }),
             });
 
@@ -99,15 +104,12 @@ namespace BridgeBotNextTest
         {
             await StartTest("Should 2 photos and 1 video as album (if supported by messenger) with captions");
 
-            await _provider.SendMessage(_conversation, new Message(attachments: new[]
+            await _provider.SendMessage(_conversation, new Message(attachments: new Attachment[]
             {
-                new AlbumAttachment(new IAlbumableAttachment[]
-                {
-                    new PhotoAttachment($"https://cataas.com/cat?v={DateTime.Now.Ticks}", caption: "photo 1"),
-                    new PhotoAttachment($"https://cataas.com/cat?v={DateTime.Now.Ticks + 10}",
-                        caption: "photo 2"),
-                    new VideoAttachment("http://techslides.com/demos/sample-videos/small.mp4", caption: "video 1")
-                })
+                new PhotoAttachment($"https://cataas.com/cat?v={DateTime.Now.Ticks}", caption: "photo 1"),
+                new PhotoAttachment($"https://cataas.com/cat?v={DateTime.Now.Ticks + 10}",
+                    caption: "photo 2"),
+                new VideoAttachment("http://techslides.com/demos/sample-videos/small.mp4", caption: "video 1")
             }));
 
             return await WaitResults();
@@ -123,7 +125,7 @@ namespace BridgeBotNextTest
             await _provider.SendMessage(_conversation, "audio");
             await _provider.SendMessage(_conversation, new Message(attachments: new[]
             {
-                new AudioAttachment("https://sample-videos.com/audio/mp3/crowd-cheering.mp3", caption: "nice cheering",
+                new AudioAttachment("https://ccrma.stanford.edu/~jos/mp3/gtr-nylon22.mp3", caption: "nice cheering",
                     title: "Cheering", performer: "Crowd"),
             }));
 
@@ -132,7 +134,7 @@ namespace BridgeBotNextTest
             await _provider.SendMessage(_conversation, "animation");
             await _provider.SendMessage(_conversation, new Message(attachments: new[]
             {
-                new AnimationAttachment("https://i.giphy.com/media/c1c1M1a2yZDd9aVReu/giphy.mp4"),
+                new AnimationAttachment("http://techslides.com/demos/sample-videos/small.mp4"),
             }));
 
             await Task.Delay(1000);
@@ -141,6 +143,14 @@ namespace BridgeBotNextTest
             await _provider.SendMessage(_conversation, new Message(attachments: new[]
             {
                 new ContactAttachment("John", "Doe", "+78005553535", "john.doe@example.com"),
+            }));
+
+            await Task.Delay(1000);
+
+            await _provider.SendMessage(_conversation, "place");
+            await _provider.SendMessage(_conversation, new Message(attachments: new[]
+            {
+                new PlaceAttachment(-72.020112, 14.452641),
             }));
 
             await Task.Delay(1000);
@@ -185,10 +195,10 @@ namespace BridgeBotNextTest
          */
         public async Task<bool> ForwardedMessagesWithAttachments()
         {
-            await StartTest("Should send forwarded messages");
-            var sender1 = new TelegramPerson(null, "BotFather", "Person 1");
-            var sender2 = new TelegramPerson(null, "BotFather", "Person 2");
-            var sender3 = new TelegramPerson(null, "BotFather", "Person 3");
+            await StartTest("Should send forwarded messages and attachments");
+            var sender1 = new TgPerson(null, "BotFather", "Person 1");
+            var sender2 = new TgPerson(null, "BotFather", "Person 2");
+            var sender3 = new TgPerson(null, "BotFather", "Person 3");
 
             var msg = new Message(originSender: sender1, body: "Test body", forwardedMessages: new[]
             {
@@ -196,40 +206,31 @@ namespace BridgeBotNextTest
                 {
                     new Message(originSender: sender3, body: "Here is 3 pics", attachments: new[]
                     {
-                        new AlbumAttachment(new[]
-                        {
-                            new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff&text=pic+1.1"),
-                            new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff&text=pic+1.2"),
-                            new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff&text=pic+1.3")
-                        })
+                        new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff?text=pic+1.1"),
+                        new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff?text=pic+1.2"),
+                        new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff?text=pic+1.3")
                     }),
                 }, attachments: new[]
                 {
-                    new AlbumAttachment(new[]
-                    {
-                        new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff&text=pic+2.1"),
-                        new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff&text=pic+2.2"),
-                        new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff&text=pic+2.3")
-                    })
+                    new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff?text=pic+2.1"),
+                    new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff?text=pic+2.2"),
+                    new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff?text=pic+2.3")
                 }),
                 new Message(originSender: sender2, body: "Test fwd 2", forwardedMessages: new[]
                 {
                     new Message(originSender: sender3, body: "Here is 11 msgs", attachments: new[]
                     {
-                        new AlbumAttachment(new[]
-                        {
-                            new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff&text=pic+3.1"),
-                            new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff&text=pic+3.2"),
-                            new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff&text=pic+3.3"),
-                            new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff&text=pic+3.4"),
-                            new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff&text=pic+3.5"),
-                            new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff&text=pic+3.6"),
-                            new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff&text=pic+3.7"),
-                            new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff&text=pic+3.8"),
-                            new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff&text=pic+3.9"),
-                            new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff&text=pic+3.10"),
-                            new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff&text=pic+3.11"),
-                        }),
+                        new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff?text=pic+3.1"),
+                        new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff?text=pic+3.2"),
+                        new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff?text=pic+3.3"),
+                        new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff?text=pic+3.4"),
+                        new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff?text=pic+3.5"),
+                        new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff?text=pic+3.6"),
+                        new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff?text=pic+3.7"),
+                        new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff?text=pic+3.8"),
+                        new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff?text=pic+3.9"),
+                        new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff?text=pic+3.10"),
+                        new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff?text=pic+3.11"),
                     }),
                 }),
             });
@@ -268,8 +269,13 @@ namespace BridgeBotNextTest
             await _provider.SendMessage(_conversation, $"🔹 Test case:\n{testCase}");
         }
 
-        public virtual async Task<bool> WaitResults()
+        public virtual async Task<bool> WaitResults(bool sendPassOrFail = true)
         {
+            if (sendPassOrFail)
+            {
+                await _provider.SendMessage(_conversation, "🔹 /pass or /fail 🔹");
+            }
+
             var res = await tcs.Task;
             tcs = null;
             return res;

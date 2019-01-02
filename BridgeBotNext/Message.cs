@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using BridgeBotNext.Attachments;
 
 namespace BridgeBotNext
@@ -26,7 +25,7 @@ namespace BridgeBotNext
         public string Body { get; }
         public IEnumerable<Message> ForwardedMessages { get; }
         public IEnumerable<Attachment> Attachments { get; }
-        
+
         public static implicit operator Message(string body)
         {
             return new Message(body);

@@ -7,7 +7,7 @@ namespace BridgeBotNext.Attachments
         }
 
         public StickerAttachment(string url, object meta = null, string fileName = null, long fileSize = 0,
-            string mimeType = null) : base(url, meta, null, fileName, fileSize, mimeType)
+            string mimeType = null) : base(url, meta, null, fileName, fileSize, mimeType, "image/png")
         {
         }
     }

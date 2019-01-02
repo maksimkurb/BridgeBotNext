@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using BridgeBotNext.Attachments;
 
 namespace BridgeBotNext.Providers
 {
@@ -17,7 +18,6 @@ namespace BridgeBotNext.Providers
          * Provider display name
          */
         public virtual string DisplayName => "";
-
 
         public virtual void Dispose()
         {
@@ -44,30 +44,35 @@ namespace BridgeBotNext.Providers
             StringBuilder sb = new StringBuilder();
 
             Person prevSender = null;
-            int prevLevel = 0;
+            int prevLevel = Int32.MaxValue;
             foreach (var (msg, level) in messages)
             {
                 if (msg.OriginSender != null)
                 {
-                    if (prevSender == null || prevLevel != level || !prevSender.Equals(msg.OriginSender)) {
-                        sb.Append("|");
+                    if (prevSender == null || prevLevel != level || !prevSender.Equals(msg.OriginSender))
+                    {
+                        sb.Append("| ");
                         for (int i = 0; i <= level; i++)
                         {
-                            sb.Append("›");
+                            sb.Append(">⁣"); // invisible separator because VK translates ">>" into "»"
                         }
-    
+
+                        sb.Append("| ");
                         sb.Append(FormatSender(msg.OriginSender));
                         sb.Append("\n");
                     }
                 }
+
                 var rows = msg.Body.Split("\n");
                 foreach (var row in rows)
                 {
-                    sb.Append("|");
+                    sb.Append("| ");
                     for (int i = 0; i <= level; i++)
                     {
-                        sb.Append("›");
+                        sb.Append(">⁣"); // same as above
                     }
+
+                    sb.Append("| ");
                     sb.Append(row);
                     sb.Append("\n");
                 }
@@ -79,9 +84,59 @@ namespace BridgeBotNext.Providers
             return sb.ToString();
         }
 
-        public virtual string FormatSender(Person sender)
+        protected virtual string FormatSender(Person sender)
         {
             return $"💬 {sender.DisplayName}:";
+        }
+
+        protected virtual string FormatMessageBody(Message message,
+            (Message Item, int Level)[] forwardedMessages = null)
+        {
+            var body = new StringBuilder();
+
+            if (message.OriginSender != null)
+            {
+                body.AppendLine(FormatSender(message.OriginSender));
+            }
+
+            if (!forwardedMessages.IsNullOrEmpty())
+            {
+                body.AppendLine(FormatForwardedMessages(forwardedMessages));
+            }
+
+            if (!string.IsNullOrEmpty(message.Body))
+            {
+                body.AppendLine(message.Body);
+            }
+
+            return body.ToString();
+        }
+
+        protected virtual (Message Item, int Level)[] FlattenForwardedMessages(Message message)
+        {
+            var fwdExpanded = message.ForwardedMessages?
+                .PostOrderFlatten(el => el.ForwardedMessages);
+            return fwdExpanded as (Message Item, int Level)[] ?? fwdExpanded?.ToArray();
+        }
+
+        protected virtual List<Attachment> GetAllAttachments(Message message, (Message Item, int Level)[] fwd)
+        {
+            List<Attachment> attachments = new List<Attachment>();
+            if (!fwd.IsNullOrEmpty())
+            {
+                attachments.AddRange(fwd
+                    .Select(e => e.Item)
+                    .Where(msg => !msg.Attachments.IsNullOrEmpty())
+                    .SelectMany(msg => msg.Attachments)
+                );
+            }
+
+            if (message != null && !message.Attachments.IsNullOrEmpty())
+            {
+                attachments.AddRange(message.Attachments);
+            }
+
+            return attachments;
         }
 
         /**

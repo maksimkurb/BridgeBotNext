@@ -5,7 +5,7 @@ using BridgeBotNext.Attachments;
 
 namespace BridgeBotNext.Providers.Tg
 {
-    public class TelegramMediaGroupSettler
+    public class TgMediaGroupSettler
     {
         private readonly IDictionary<string, MediaGroup> _mediaGroups = new Dictionary<string, MediaGroup>();
 

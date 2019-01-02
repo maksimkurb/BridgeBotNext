@@ -1,6 +1,8 @@
+using BridgeBotNext.Providers.Vk;
+
 namespace BridgeBotNext.Attachments
 {
-    public class LinkAttachment : Attachment
+    public class LinkAttachment : Attachment, IVkSpecialAttachment
     {
         public LinkAttachment(string url, object meta = null) : base(url, meta)
         {
