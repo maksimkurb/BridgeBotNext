@@ -6,7 +6,7 @@ Work in progress
 ## Checklist
 ```
 [x] Implement working prototype
-[ ] Bot authorization to prevent setting-up bot instance by unauthorized {for self-hosted instance}
+[x] Bot authorization to prevent setting-up bot instance by unauthorized {for self-hosted instance}
 [ ] Heroku(?) deploy button for 1-click-to-run
 [ ] ???
 ```
