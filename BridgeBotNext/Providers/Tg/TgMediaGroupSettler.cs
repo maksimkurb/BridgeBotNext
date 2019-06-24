@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Timers;
 using BridgeBotNext.Attachments;
+using BridgeBotNext.Entities;
 
 namespace BridgeBotNext.Providers.Tg
 {

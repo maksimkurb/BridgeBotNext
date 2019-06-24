@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using BridgeBotNext.Attachments;
 
-namespace BridgeBotNext
+namespace BridgeBotNext.Entities
 {
     public class Message
     {

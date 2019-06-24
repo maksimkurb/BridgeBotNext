@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+
 using BridgeBotNext.Attachments;
+using BridgeBotNext.Entities;
 
 namespace BridgeBotNext.Providers
 {
@@ -19,61 +21,71 @@ namespace BridgeBotNext.Providers
          */
         public virtual string DisplayName => "";
 
-        public virtual void Dispose()
-        {
-            Disconnect();
-        }
 
         /**
          * Start provider and connect to the messaging service 
          */
         public abstract Task Connect();
 
-        /*
-         * Disconnect from the messaging service and stop provider
-         */
-        public abstract Task Disconnect();
+        public abstract void Dispose();
+
 
         /**
          * Send message to provider
          */
         public abstract Task SendMessage(Conversation conversation, Message message);
 
+        protected virtual string SanitizeMessageBody(string body)
+        {
+            return (body ?? "").Trim('\n');
+        }
+
         public virtual string FormatForwardedMessages(IEnumerable<(Message Item, int Level)> messages)
         {
-            StringBuilder sb = new StringBuilder();
+            var sb = new StringBuilder();
 
             Person prevSender = null;
-            int prevLevel = Int32.MaxValue;
+            var prevLevel = int.MaxValue;
+            int attachmentIdx = 1;
             foreach (var (msg, level) in messages)
             {
                 if (msg.OriginSender != null)
-                {
                     if (prevSender == null || prevLevel != level || !prevSender.Equals(msg.OriginSender))
                     {
                         sb.Append("| ");
-                        for (int i = 0; i <= level; i++)
-                        {
+                        for (var i = 0; i <= level; i++)
                             sb.Append(">⁣"); // invisible separator because VK translates ">>" into "»"
-                        }
 
                         sb.Append("| ");
                         sb.Append(FormatSender(msg.OriginSender));
                         sb.Append("\n");
                     }
+
+                var body = SanitizeMessageBody(msg.Body);
+                if (body.Length > 0)
+                {
+                    var rows = body.Split("\n");
+                    foreach (var row in rows)
+                    {
+                        sb.Append("| ");
+                        for (var i = 0; i <= level; i++) sb.Append(">⁣"); // same as above
+
+                        sb.Append("| ");
+                        sb.Append(row);
+                        sb.Append("\n");
+                    }
                 }
 
-                var rows = msg.Body.Split("\n");
-                foreach (var row in rows)
+                if (msg.Attachments != null && msg.Attachments.Any())
                 {
                     sb.Append("| ");
-                    for (int i = 0; i <= level; i++)
-                    {
-                        sb.Append(">⁣"); // same as above
-                    }
-
+                    for (var i = 0; i <= level; i++) sb.Append(">⁣");
                     sb.Append("| ");
-                    sb.Append(row);
+
+                    for (int i = 0; i < msg.Attachments.Count(); i++)
+                    {
+                        sb.AppendFormat("[📎{0}] ", attachmentIdx++);
+                    }
                     sb.Append("\n");
                 }
 
@@ -94,20 +106,11 @@ namespace BridgeBotNext.Providers
         {
             var body = new StringBuilder();
 
-            if (message.OriginSender != null)
-            {
-                body.AppendLine(FormatSender(message.OriginSender));
-            }
+            if (message.OriginSender != null) body.AppendLine(FormatSender(message.OriginSender));
 
-            if (!forwardedMessages.IsNullOrEmpty())
-            {
-                body.AppendLine(FormatForwardedMessages(forwardedMessages));
-            }
+            if (!forwardedMessages.IsNullOrEmpty()) body.AppendLine(FormatForwardedMessages(forwardedMessages));
 
-            if (!string.IsNullOrEmpty(message.Body))
-            {
-                body.AppendLine(message.Body);
-            }
+            if (!string.IsNullOrEmpty(message.Body)) body.AppendLine(SanitizeMessageBody(message.Body));
 
             return body.ToString();
         }
@@ -121,20 +124,15 @@ namespace BridgeBotNext.Providers
 
         protected virtual List<Attachment> GetAllAttachments(Message message, (Message Item, int Level)[] fwd)
         {
-            List<Attachment> attachments = new List<Attachment>();
+            var attachments = new List<Attachment>();
             if (!fwd.IsNullOrEmpty())
-            {
                 attachments.AddRange(fwd
                     .Select(e => e.Item)
                     .Where(msg => !msg.Attachments.IsNullOrEmpty())
                     .SelectMany(msg => msg.Attachments)
                 );
-            }
 
-            if (message != null && !message.Attachments.IsNullOrEmpty())
-            {
-                attachments.AddRange(message.Attachments);
-            }
+            if (message != null && !message.Attachments.IsNullOrEmpty()) attachments.AddRange(message.Attachments);
 
             return attachments;
         }
@@ -162,6 +160,24 @@ namespace BridgeBotNext.Providers
         {
             var handler = CommandReceived;
             handler?.Invoke(this, e);
+        }
+
+        protected bool Equals(Provider other)
+        {
+            return string.Equals(Name, other.Name);
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (ReferenceEquals(null, obj)) return false;
+            if (ReferenceEquals(this, obj)) return true;
+            if (obj.GetType() != GetType()) return false;
+            return Equals((Provider)obj);
+        }
+
+        public override int GetHashCode()
+        {
+            return Name != null ? Name.GetHashCode() : 0;
         }
 
 

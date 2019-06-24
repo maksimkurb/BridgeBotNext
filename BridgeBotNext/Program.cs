@@ -2,10 +2,15 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+
 using BridgeBotNext.Configuration;
+using BridgeBotNext.Entities;
 using BridgeBotNext.Providers;
 using BridgeBotNext.Providers.Tg;
 using BridgeBotNext.Providers.Vk;
+
+using LiteDB;
+
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -17,7 +22,7 @@ namespace BridgeBotNext
         private static void ConfigureServices(ServiceCollection services)
         {
             IConfiguration config = new ConfigurationBuilder()
-                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: false)
+                .AddJsonFile("appsettings.json", true, false)
                 .AddEnvironmentVariables("BOT_")
                 .Build();
 
@@ -25,12 +30,17 @@ namespace BridgeBotNext
                 .AddLogging(configure => configure.AddConsole())
                 .Configure<LoggerFilterOptions>(options => options.MinLevel = LogLevel.Trace);
 
+            services.AddSingleton<BotOrchestrator>();
+
             services.Configure<TgConfiguration>(config.GetSection("Tg"));
             services.AddSingleton<TgProvider>();
 
             services.Configure<VkConfiguration>(config.GetSection("Vk"));
 
             services.AddSingleton<VkProvider>();
+
+            var connectionString = config.GetValue("database", "bridgebot.db");
+            services.AddSingleton(new LiteDatabase(connectionString));
         }
 
         private static void Main(string[] args)
@@ -42,11 +52,14 @@ namespace BridgeBotNext
             var logger = serviceProvider.GetService<ILogger<Program>>();
 
             var providers = new List<Provider>();
+
+            #region Registering providers
+
             providers.Add(serviceProvider.GetService<TgProvider>());
             providers.Add(serviceProvider.GetService<VkProvider>());
 
+            #endregion
 
-            // End of providers
             if (!providers.Any())
             {
                 logger.LogError("No providers enabled. Please provide bot tokens, if you wish enable bot provider");
@@ -57,6 +70,8 @@ namespace BridgeBotNext
 
             logger.LogInformation("Running bot with providers: {0}",
                 string.Join(" ", providers.Select(prov => prov.Name)));
+
+            #region Connect to providers
 
             var connectionTask = Task.WhenAll(providers.Select(prov => prov.Connect()));
             var done = connectionTask.Wait(60000);
@@ -72,31 +87,49 @@ namespace BridgeBotNext
                 Environment.Exit(59);
             }
 
+            #endregion
+
+            logger.LogTrace("Bot is successfully connected to all providers");
+
+            BsonMapper.Global.RegisterType(
+                provider => new BsonValue(provider.Name),
+                providerName =>
+                {
+                    foreach (var provider in providers)
+                        if (provider.Name == providerName.AsString)
+                            return provider;
+
+                    return null;
+                });
+            BsonMapper.Global.RegisterType(
+                conversationId => new BsonValue(conversationId.ToString()),
+                value =>
+                {
+                    var parts = value.AsString.Split(':', 2);
+                    if (parts.Length != 2) return null;
+                    foreach (var provider in providers)
+                        if (provider.Name == parts[0])
+                            return new ConversationId(provider, parts[1]);
+
+                    return null;
+                });
+
+            var orchestrator = serviceProvider.GetService<BotOrchestrator>();
+
+            foreach (var provider in providers) orchestrator.AddProvider(provider);
+
             logger.LogInformation("Bot is successfully started");
 
-            #region Temporary
-
-            providers.ForEach(provider => { provider.MessageReceived += OnMessageReceived; });
-
-            #endregion
+            #region Graceful shutdown
 
             ConsoleHost.WaitForShutdown();
 
-            var disconnectionTask = Task.WhenAll(providers.Select(prov => prov.Disconnect()));
             logger.LogInformation("Graceful shutdown");
-            done = disconnectionTask.Wait(15000);
-            if (!done)
-            {
-                logger.LogError("Disconnection is timed out");
-                Environment.Exit(1460);
-            }
-        }
+            foreach (var provider in providers) orchestrator.RemoveProvider(provider);
 
-        private static void OnMessageReceived(object sender, Provider.MessageEventArgs e)
-        {
-            var msg = e.Message;
-            e.Message.OriginConversation.Provider.SendMessage(msg.OriginConversation, msg);
-            Console.WriteLine($"{msg.OriginSender.DisplayName} ({msg.OriginConversation.Id}): {msg.Body}");
+            providers.ForEach(prov => prov.Dispose());
+
+            #endregion
         }
     }
 }

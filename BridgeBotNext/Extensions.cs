@@ -18,15 +18,12 @@ namespace BridgeBotNext
         public static IEnumerable<(T Item, int Level)> PostOrderFlatten<T>(this IEnumerable<T> source,
             Func<T, IEnumerable<T>> selector, int startLevel = 0)
         {
-            List<(T Item, int Level)> list = new List<(T Item, int Level)>();
+            var list = new List<(T Item, int Level)>();
 
             foreach (var it in source)
             {
                 var descendants = selector(it);
-                if (!descendants.IsNullOrEmpty())
-                {
-                    list.AddRange(descendants.PostOrderFlatten(selector, startLevel + 1));
-                }
+                if (!descendants.IsNullOrEmpty()) list.AddRange(descendants.PostOrderFlatten(selector, startLevel + 1));
 
                 list.Add((it, startLevel));
             }
@@ -39,8 +36,10 @@ namespace BridgeBotNext
          * @url https://stackoverflow.com/a/31881243
          */
         public static IEnumerable<T> Expand<T>(
-            this IEnumerable<T> source, Func<T, IEnumerable<T>> elementSelector) =>
-            source.ExpandWithLevel(elementSelector).Select(e => e.Item);
+            this IEnumerable<T> source, Func<T, IEnumerable<T>> elementSelector)
+        {
+            return source.ExpandWithLevel(elementSelector).Select(e => e.Item);
+        }
 
         /**
          * @author Ivan Stoev

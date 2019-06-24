@@ -35,10 +35,7 @@ namespace BridgeBotNext.Attachments
 
             sb.Append(!string.IsNullOrEmpty(Title) ? Title : "[audio]");
 
-            if (Duration > 5)
-            {
-                sb.Append(ReadableDuration());
-            }
+            if (Duration > 5) sb.Append(ReadableDuration());
 
             return sb.ToString();
         }

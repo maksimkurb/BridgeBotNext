@@ -18,10 +18,7 @@ namespace BridgeBotNext.Attachments
         {
             var sb = new StringBuilder();
             var t = TimeSpan.FromSeconds(Duration ?? 0);
-            if (t.Hours > 0)
-            {
-                sb.AppendFormat("{0:D2}:", t.Hours);
-            }
+            if (t.Hours > 0) sb.AppendFormat("{0:D2}:", t.Hours);
 
             sb.AppendFormat("{0:D2}:{1:D2}", t.Minutes, t.Seconds);
             return sb.ToString();

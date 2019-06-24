@@ -15,22 +15,19 @@ namespace BridgeBotNext
         public static HttpWebResponse MultipartFormDataPost(string postUrl, string userAgent,
             Dictionary<string, object> postParameters)
         {
-            string formDataBoundary = String.Format("----------{0:N}", Guid.NewGuid());
-            string contentType = "multipart/form-data; boundary=" + formDataBoundary;
+            var formDataBoundary = string.Format("----------{0:N}", Guid.NewGuid());
+            var contentType = "multipart/form-data; boundary=" + formDataBoundary;
 
-            byte[] formData = GetMultipartFormData(postParameters, formDataBoundary);
+            var formData = GetMultipartFormData(postParameters, formDataBoundary);
 
             return PostForm(postUrl, userAgent, contentType, formData);
         }
 
         private static HttpWebResponse PostForm(string postUrl, string userAgent, string contentType, byte[] formData)
         {
-            HttpWebRequest request = WebRequest.Create(postUrl) as HttpWebRequest;
+            var request = WebRequest.Create(postUrl) as HttpWebRequest;
 
-            if (request == null)
-            {
-                throw new NullReferenceException("request is not a http request");
-            }
+            if (request == null) throw new NullReferenceException("request is not a http request");
 
             // Set up the request properties.
             request.Method = "POST";
@@ -45,7 +42,7 @@ namespace BridgeBotNext
             // request.Headers.Add("Authorization", "Basic " + Convert.ToBase64String(System.Text.Encoding.Default.GetBytes("username" + ":" + "password")));
 
             // Send the form data to the request.
-            using (Stream requestStream = request.GetRequestStream())
+            using (var requestStream = request.GetRequestStream())
             {
                 requestStream.Write(formData, 0, formData.Length);
                 requestStream.Close();
@@ -56,8 +53,8 @@ namespace BridgeBotNext
 
         private static byte[] GetMultipartFormData(Dictionary<string, object> postParameters, string boundary)
         {
-            Stream formDataStream = new System.IO.MemoryStream();
-            bool needsCLRF = false;
+            Stream formDataStream = new MemoryStream();
+            var needsCLRF = false;
 
             foreach (var param in postParameters)
             {
@@ -70,10 +67,10 @@ namespace BridgeBotNext
 
                 if (param.Value is FileParameter)
                 {
-                    FileParameter fileToUpload = (FileParameter) param.Value;
+                    var fileToUpload = (FileParameter) param.Value;
 
                     // Add just the first part of this param, since we will write the file data directly to the Stream
-                    string header = string.Format(
+                    var header = string.Format(
                         "--{0}\r\nContent-Disposition: form-data; name=\"{1}\"; filename=\"{2}\";\r\nContent-Type: {3}\r\n\r\n",
                         boundary,
                         param.Key,
@@ -87,7 +84,7 @@ namespace BridgeBotNext
                 }
                 else
                 {
-                    string postData = string.Format("--{0}\r\nContent-Disposition: form-data; name=\"{1}\"\r\n\r\n{2}",
+                    var postData = string.Format("--{0}\r\nContent-Disposition: form-data; name=\"{1}\"\r\n\r\n{2}",
                         boundary,
                         param.Key,
                         param.Value);
@@ -96,12 +93,12 @@ namespace BridgeBotNext
             }
 
             // Add the end of the request.  Start with a newline
-            string footer = "\r\n--" + boundary + "--\r\n";
+            var footer = "\r\n--" + boundary + "--\r\n";
             formDataStream.Write(encoding.GetBytes(footer), 0, encoding.GetByteCount(footer));
 
             // Dump the Stream into a byte[]
             formDataStream.Position = 0;
-            byte[] formData = new byte[formDataStream.Length];
+            var formData = new byte[formDataStream.Length];
             formDataStream.Read(formData, 0, formData.Length);
             formDataStream.Close();
 

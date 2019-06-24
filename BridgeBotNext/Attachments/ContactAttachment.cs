@@ -105,10 +105,7 @@ namespace BridgeBotNext.Attachments
                 sb.Append(" ");
             }
 
-            if (!string.IsNullOrEmpty(Email))
-            {
-                sb.Append(Email);
-            }
+            if (!string.IsNullOrEmpty(Email)) sb.Append(Email);
 
             return sb.ToString();
         }

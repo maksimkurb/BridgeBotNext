@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
-using BridgeBotNext;
 using BridgeBotNext.Configuration;
+using BridgeBotNext.Entities;
 using BridgeBotNext.Providers.Tg;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;

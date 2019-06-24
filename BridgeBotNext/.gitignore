@@ -3,6 +3,7 @@
 #################
 
 appsettings.json
+*.db
 
 #################
 ## Visual Studio

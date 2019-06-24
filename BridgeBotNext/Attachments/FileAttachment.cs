@@ -49,13 +49,8 @@ namespace BridgeBotNext.Attachments
             if (!fileName.Contains("."))
             {
                 if (mimeType != null)
-                {
                     return $"{fileName}.{MimeTypesMap.GetExtension(mimeType)}";
-                }
-                else if (defaultMimeType != null)
-                {
-                    return $"{fileName}.{MimeTypesMap.GetExtension(defaultMimeType)}";
-                }
+                if (defaultMimeType != null) return $"{fileName}.{MimeTypesMap.GetExtension(defaultMimeType)}";
             }
 
             return fileName;
@@ -69,7 +64,7 @@ namespace BridgeBotNext.Attachments
         {
             // Get absolute value
             var absoluteI = FileSize < 0 ? -FileSize : FileSize;
-            long fileSize = FileSize ?? 0;
+            var fileSize = FileSize ?? 0;
             // Determine the suffix and readable value
             string suffix;
             double readable;

@@ -1,36 +1,36 @@
 using BridgeBotNext.Providers;
 
-namespace BridgeBotNext
+namespace BridgeBotNext.Entities
 {
     public abstract class Person
     {
         public abstract Provider Provider { get; }
 
-        /**
-         * Person unique id
-         */
-        public abstract string Id { get; }
+        /// <summary>
+        ///     Person unique id
+        /// </summary>
+        public abstract string PersonId { get; }
 
-        /**
-         * Person display name
-         */
+        /// <summary>
+        ///     Person display name
+        /// </summary>
         public abstract string DisplayName { get; }
 
-        /**
-         * Person profile url
-         */
+        /// <summary>
+        ///     Person profile url
+        /// </summary>
         public abstract string ProfileUrl { get; }
 
         protected bool Equals(Person other)
         {
-            return Equals(Provider, other.Provider) && string.Equals(Id, other.Id);
+            return Provider.Equals(other.Provider) && string.Equals(PersonId, other.PersonId);
         }
 
         public override bool Equals(object obj)
         {
             if (ReferenceEquals(null, obj)) return false;
             if (ReferenceEquals(this, obj)) return true;
-            if (obj.GetType() != this.GetType()) return false;
+            if (obj.GetType() != GetType()) return false;
             return Equals((Person) obj);
         }
 
@@ -38,7 +38,8 @@ namespace BridgeBotNext
         {
             unchecked
             {
-                return ((Provider != null ? Provider.GetHashCode() : 0) * 397) ^ (Id != null ? Id.GetHashCode() : 0);
+                return ((Provider != null ? Provider.GetHashCode() : 0) * 397) ^
+                       (PersonId != null ? PersonId.GetHashCode() : 0);
             }
         }
     }

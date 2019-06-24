@@ -11,10 +11,7 @@ namespace BridgeBotNextTest.Telegram
         public override Task<bool> WaitResults(bool sendPassOrFail = true)
         {
             var provider = (TestTgProvider) _provider;
-            if (sendPassOrFail)
-            {
-                provider.SendTestButtons(_conversation);
-            }
+            if (sendPassOrFail) provider.SendTestButtons(_conversation);
 
             return base.WaitResults(false);
         }

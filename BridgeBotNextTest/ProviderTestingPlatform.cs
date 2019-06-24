@@ -1,7 +1,7 @@
 using System;
 using System.Threading.Tasks;
-using BridgeBotNext;
 using BridgeBotNext.Attachments;
+using BridgeBotNext.Entities;
 using BridgeBotNext.Providers;
 using BridgeBotNext.Providers.Tg;
 
@@ -46,9 +46,9 @@ namespace BridgeBotNextTest
         public async Task<bool> ForwardedMessages()
         {
             await StartTest("Should send forwarded messages");
-            var sender1 = new TgPerson(null, "BotFather", "Person 1");
-            var sender2 = new TgPerson(null, "BotFather", "Person 2");
-            var sender3 = new TgPerson(null, "BotFather", "Person 3");
+            var sender1 = new TgPerson(null, 10, "Person 1");
+            var sender2 = new TgPerson(null, 11, "Person 2");
+            var sender3 = new TgPerson(null, 12, "Person 3");
 
             var msg = new Message(originSender: sender1, body: "Test body", forwardedMessages: new[]
             {
@@ -56,21 +56,21 @@ namespace BridgeBotNextTest
                     forwardedMessages: new[]
                     {
                         new Message(originSender: sender3, body: "Below this line there should not be a username"),
-                        new Message(originSender: sender3, body: "Now it should be"),
+                        new Message(originSender: sender3, body: "Now it should be")
                     }),
 
                 new Message(originSender: sender2, body: "Test fwd 2", forwardedMessages: new[]
                 {
                     new Message(originSender: sender2, body: "Test fwd2.1", forwardedMessages: new[]
                     {
-                        new Message(originSender: sender2, body: "Test fwd2.1.1"),
+                        new Message(originSender: sender2, body: "Test fwd2.1.1")
                     }),
                     new Message(originSender: sender2, body: "Test fwd2.2", forwardedMessages: new[]
                     {
-                        new Message(originSender: sender2, body: "Test fwd2.2.1"),
+                        new Message(originSender: sender2, body: "Test fwd2.2.1")
                     }),
-                    new Message(originSender: sender3, body: "Test fwd2.3"),
-                }),
+                    new Message(originSender: sender3, body: "Test fwd2.3")
+                })
             });
 
             await _provider.SendMessage(_conversation, msg);
@@ -126,7 +126,7 @@ namespace BridgeBotNextTest
             await _provider.SendMessage(_conversation, new Message(attachments: new[]
             {
                 new AudioAttachment("https://ccrma.stanford.edu/~jos/mp3/gtr-nylon22.mp3", caption: "nice cheering",
-                    title: "Cheering", performer: "Crowd"),
+                    title: "Cheering", performer: "Crowd")
             }));
 
             await Task.Delay(1000);
@@ -134,7 +134,7 @@ namespace BridgeBotNextTest
             await _provider.SendMessage(_conversation, "animation");
             await _provider.SendMessage(_conversation, new Message(attachments: new[]
             {
-                new AnimationAttachment("http://techslides.com/demos/sample-videos/small.mp4"),
+                new AnimationAttachment("http://techslides.com/demos/sample-videos/small.mp4")
             }));
 
             await Task.Delay(1000);
@@ -142,7 +142,7 @@ namespace BridgeBotNextTest
             await _provider.SendMessage(_conversation, "contact");
             await _provider.SendMessage(_conversation, new Message(attachments: new[]
             {
-                new ContactAttachment("John", "Doe", "+78005553535", "john.doe@example.com"),
+                new ContactAttachment("John", "Doe", "+78005553535", "john.doe@example.com")
             }));
 
             await Task.Delay(1000);
@@ -150,7 +150,7 @@ namespace BridgeBotNextTest
             await _provider.SendMessage(_conversation, "place");
             await _provider.SendMessage(_conversation, new Message(attachments: new[]
             {
-                new PlaceAttachment(-72.020112, 14.452641),
+                new PlaceAttachment(-72.020112, 14.452641)
             }));
 
             await Task.Delay(1000);
@@ -159,7 +159,7 @@ namespace BridgeBotNextTest
             await _provider.SendMessage(_conversation, new Message(attachments: new[]
             {
                 new FileAttachment("https://sample-videos.com/text/Sample-text-file-10kb.txt",
-                    caption: "Sample text file"),
+                    caption: "Sample text file")
             }));
 
             await Task.Delay(1000);
@@ -167,7 +167,7 @@ namespace BridgeBotNextTest
             await _provider.SendMessage(_conversation, "link");
             await _provider.SendMessage(_conversation, new Message(attachments: new[]
             {
-                new LinkAttachment("https://google.com"),
+                new LinkAttachment("https://google.com")
             }));
 
             await Task.Delay(1000);
@@ -175,7 +175,7 @@ namespace BridgeBotNextTest
             await _provider.SendMessage(_conversation, "sticker");
             await _provider.SendMessage(_conversation, new Message(attachments: new[]
             {
-                new StickerAttachment("https://www.gstatic.com/webp/gallery3/2_webp_ll.webp"),
+                new StickerAttachment("https://www.gstatic.com/webp/gallery3/2_webp_ll.webp")
             }));
 
             await Task.Delay(1000);
@@ -183,7 +183,7 @@ namespace BridgeBotNextTest
             await _provider.SendMessage(_conversation, "voice");
             await _provider.SendMessage(_conversation, new Message(attachments: new[]
             {
-                new VoiceAttachment("https://upload.wikimedia.org/wikipedia/commons/c/c8/Example.ogg"),
+                new VoiceAttachment("https://upload.wikimedia.org/wikipedia/commons/c/c8/Example.ogg")
             }));
 
             return await WaitResults();
@@ -196,9 +196,9 @@ namespace BridgeBotNextTest
         public async Task<bool> ForwardedMessagesWithAttachments()
         {
             await StartTest("Should send forwarded messages and attachments");
-            var sender1 = new TgPerson(null, "BotFather", "Person 1");
-            var sender2 = new TgPerson(null, "BotFather", "Person 2");
-            var sender3 = new TgPerson(null, "BotFather", "Person 3");
+            var sender1 = new TgPerson(null, 10, "Person 1");
+            var sender2 = new TgPerson(null, 11, "Person 2");
+            var sender3 = new TgPerson(null, 12, "Person 3");
 
             var msg = new Message(originSender: sender1, body: "Test body", forwardedMessages: new[]
             {
@@ -206,33 +206,33 @@ namespace BridgeBotNextTest
                 {
                     new Message(originSender: sender3, body: "Here is 3 pics", attachments: new[]
                     {
-                        new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff?text=pic+1.1"),
-                        new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff?text=pic+1.2"),
-                        new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff?text=pic+1.3")
-                    }),
+                        new PhotoAttachment("https://dummyimage.com/600x400/000/ffffff?text=pic+1.1"),
+                        new PhotoAttachment("https://dummyimage.com/600x400/000/ffffff?text=pic+1.2"),
+                        new PhotoAttachment("https://dummyimage.com/600x400/000/ffffff?text=pic+1.3")
+                    })
                 }, attachments: new[]
                 {
-                    new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff?text=pic+2.1"),
-                    new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff?text=pic+2.2"),
-                    new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff?text=pic+2.3")
+                    new PhotoAttachment("https://dummyimage.com/600x400/000/ffffff?text=pic+2.1"),
+                    new PhotoAttachment("https://dummyimage.com/600x400/000/ffffff?text=pic+2.2"),
+                    new PhotoAttachment("https://dummyimage.com/600x400/000/ffffff?text=pic+2.3")
                 }),
                 new Message(originSender: sender2, body: "Test fwd 2", forwardedMessages: new[]
                 {
                     new Message(originSender: sender3, body: "Here is 11 msgs", attachments: new[]
                     {
-                        new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff?text=pic+3.1"),
-                        new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff?text=pic+3.2"),
-                        new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff?text=pic+3.3"),
-                        new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff?text=pic+3.4"),
-                        new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff?text=pic+3.5"),
-                        new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff?text=pic+3.6"),
-                        new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff?text=pic+3.7"),
-                        new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff?text=pic+3.8"),
-                        new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff?text=pic+3.9"),
-                        new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff?text=pic+3.10"),
-                        new PhotoAttachment($"https://dummyimage.com/600x400/000/ffffff?text=pic+3.11"),
-                    }),
-                }),
+                        new PhotoAttachment("https://dummyimage.com/600x400/000/ffffff?text=pic+3.1"),
+                        new PhotoAttachment("https://dummyimage.com/600x400/000/ffffff?text=pic+3.2"),
+                        new PhotoAttachment("https://dummyimage.com/600x400/000/ffffff?text=pic+3.3"),
+                        new PhotoAttachment("https://dummyimage.com/600x400/000/ffffff?text=pic+3.4"),
+                        new PhotoAttachment("https://dummyimage.com/600x400/000/ffffff?text=pic+3.5"),
+                        new PhotoAttachment("https://dummyimage.com/600x400/000/ffffff?text=pic+3.6"),
+                        new PhotoAttachment("https://dummyimage.com/600x400/000/ffffff?text=pic+3.7"),
+                        new PhotoAttachment("https://dummyimage.com/600x400/000/ffffff?text=pic+3.8"),
+                        new PhotoAttachment("https://dummyimage.com/600x400/000/ffffff?text=pic+3.9"),
+                        new PhotoAttachment("https://dummyimage.com/600x400/000/ffffff?text=pic+3.10"),
+                        new PhotoAttachment("https://dummyimage.com/600x400/000/ffffff?text=pic+3.11")
+                    })
+                })
             });
 
             await _provider.SendMessage(_conversation, msg);
@@ -271,10 +271,7 @@ namespace BridgeBotNextTest
 
         public virtual async Task<bool> WaitResults(bool sendPassOrFail = true)
         {
-            if (sendPassOrFail)
-            {
-                await _provider.SendMessage(_conversation, "🔹 /pass or /fail 🔹");
-            }
+            if (sendPassOrFail) await _provider.SendMessage(_conversation, "🔹 /pass or /fail 🔹");
 
             var res = await tcs.Task;
             tcs = null;

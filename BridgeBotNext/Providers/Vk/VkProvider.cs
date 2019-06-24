@@ -4,19 +4,32 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
+using System.Web;
+
 using BridgeBotNext.Attachments;
 using BridgeBotNext.Configuration;
+using BridgeBotNext.Entities;
+
+using Caching;
+
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using MoreLinq;
+
+using MoreLinq.Extensions;
+
 using VkBotFramework;
+
 using VkNet;
 using VkNet.Abstractions;
+using VkNet.Enums;
 using VkNet.Enums.SafetyEnums;
 using VkNet.Model;
 using VkNet.Model.Attachments;
 using VkNet.Model.RequestParams;
+
 using Attachment = BridgeBotNext.Attachments.Attachment;
+using Conversation = BridgeBotNext.Entities.Conversation;
+using Message = BridgeBotNext.Entities.Message;
 
 namespace BridgeBotNext.Providers.Vk
 {
@@ -25,8 +38,9 @@ namespace BridgeBotNext.Providers.Vk
         private readonly string _accessToken;
         protected readonly IVkApi ApiClient;
         protected readonly VkBot VkBot;
-        private ulong _groupId;
+        private readonly ulong _groupId;
         protected ILogger<VkProvider> Logger;
+        protected LRUCache<long, string> DisplayNameCache;
 
         public VkProvider(ILogger<VkProvider> logger, ILogger<VkBot> botLogger, ILogger<VkApi> apiLogger,
             IOptions<VkConfiguration> configuration)
@@ -34,12 +48,13 @@ namespace BridgeBotNext.Providers.Vk
             _accessToken = configuration.Value.AccessToken;
             _groupId = configuration.Value.GroupId;
             Logger = logger;
-            VkBot = new VkBot(_accessToken, (int) _groupId, botLogger);
+            VkBot = new VkBot(_accessToken, (int)_groupId, botLogger);
             ApiClient = new VkApi(apiLogger);
             ApiClient.Authorize(new ApiAuthParams
             {
-                AccessToken = _accessToken,
+                AccessToken = _accessToken
             });
+            DisplayNameCache = new LRUCache<long, string>(1000, 6);
 
             VkBot.OnMessageReceived += _onMessage;
         }
@@ -47,48 +62,69 @@ namespace BridgeBotNext.Providers.Vk
         public override string Name => "vk";
         public override string DisplayName => "Vkontakte";
 
-        private async Task<Message> _extractMessage(VkNet.Model.Message msg)
+        private async Task<Message> _extractMessage(VkNet.Model.Message msg, bool extractConversation = true)
         {
-            var conversation = _extractConversation(msg);
-            var person = _extractPerson(msg);
+            Conversation conversation = null;
+            Person person = null;
+            IEnumerable<Message> forwarded = null;
+            IEnumerable<Attachment> attachments = null;
+            await Task.WhenAll(
+                Task.Run(async () =>
+                {
+                    if (extractConversation) conversation = await _extractConversation(msg);
+                }),
+                Task.Run(async () =>
+                {
+                    person = await _extractPerson(msg);
+                }),
+                Task.Run(async () =>
+                {
+                    forwarded = await Task.WhenAll(msg.ForwardedMessages.Select(fwd => _extractMessage(fwd, false)));
+                }),
+                Task.Run(() =>
+                {
+                    attachments = _extractAttachments(msg);
+                })
+            );
             var body = msg.Text ?? "";
-            var attachments = _extractAttachments(msg);
-            return new Message(conversation, person, body, attachments: attachments);
+            return new Message(conversation, person, body, forwarded, attachments);
         }
 
         private List<Attachment> _extractAttachments(VkNet.Model.Message msg)
         {
-            if (msg.Attachments.IsNullOrEmpty())
-            {
-                return null;
-            }
+            if (msg.Attachments.IsNullOrEmpty() && msg.Geo == null) return null;
 
-            List<Attachment> attachments = new List<Attachment>();
+            var attachments = new List<Attachment>();
 
             foreach (var at in msg.Attachments)
-            {
                 if (at.Instance is Photo photo)
                 {
-                    var maxPhoto = photo.Sizes.MaxBy(p => p.Width);
+                    var maxPhoto = photo.Sizes.MaxBy(p => p.Width).First();
                     attachments.Add(new PhotoAttachment(maxPhoto.Url.ToString(), photo, photo.Text,
                         mimeType: "image/jpeg"));
                 }
                 else if (at.Instance is Video video)
                 {
-                    attachments.Add(new LinkAttachment(video.Player.ToString(), video));
+                    attachments.Add(new LinkAttachment($"https://vk.com/video{video.OwnerId}_{video.Id}", video, $"📹{video.Title}"));
                 }
                 else if (at.Instance is Audio audio)
                 {
-                    attachments.Add(new AudioAttachment(audio.Url.ToString(), audio, title: audio.Title,
-                        performer: audio.Artist, duration: audio.Duration));
+                    var audioName = $"{audio.Title.Replace('+', ' ')} - {audio.Artist.Replace('+', ' ')}";
+                    attachments.Add(new LinkAttachment(
+                        $"https://vk.com/audio?q={HttpUtility.UrlEncode(audioName)}", audio, $"🎵{audioName}"));
                 }
                 else if (at.Instance is Document doc)
                 {
-                    attachments.Add(new FileAttachment(doc.Uri, doc, doc.Title, fileSize: doc.Size));
+                    if (doc.Type == DocumentTypeEnum.Gif)
+                        attachments.Add(new AnimationAttachment(doc.Uri, doc, doc.Title, fileSize: doc.Size ?? 0));
+                    else if (doc.Type == DocumentTypeEnum.Video)
+                        attachments.Add(new VideoAttachment(doc.Uri, doc, doc.Title, fileSize: doc.Size ?? 0));
+                    else
+                        attachments.Add(new FileAttachment(doc.Uri, doc, doc.Title, fileSize: doc.Size));
                 }
                 else if (at.Instance is Link link)
                 {
-                    attachments.Add(new LinkAttachment(link.Uri.ToString(), link));
+                    attachments.Add(new LinkAttachment(link.Uri.ToString(), link, $"🔗{link.Title}"));
                 }
                 else if (at.Instance is Market market)
                 {
@@ -106,7 +142,7 @@ namespace BridgeBotNext.Providers.Vk
                 }
                 else if (at.Instance is Sticker sticker)
                 {
-                    var maxSticker = sticker.Images.MaxBy(s => s.Width);
+                    var maxSticker = sticker.Images.MaxBy(s => s.Width).First();
                     attachments.Add(new StickerAttachment(maxSticker.Url.ToString(), sticker));
                 }
                 else if (at.Instance is Gift gift)
@@ -114,19 +150,56 @@ namespace BridgeBotNext.Providers.Vk
                     var giftUri = gift.Thumb256 ?? gift.Thumb96 ?? gift.Thumb48;
                     attachments.Add(new PhotoAttachment(giftUri.ToString(), gift, "<gift>"));
                 }
+
+            if (msg.Geo != null)
+            {
+                attachments.Add(new PlaceAttachment(msg.Geo.Coordinates.Latitude, msg.Geo.Coordinates.Longitude, msg.Geo.Place.Title, msg.Geo.Place.Address));
             }
 
             return attachments;
         }
 
-        private Person _extractPerson(VkNet.Model.Message msg)
+        private async Task<Person> _extractPerson(VkNet.Model.Message msg)
         {
-            return new VkPerson(this, msg.FromId.ToString(), "user_name");
+            try
+            {
+                if (msg.FromId == null || msg.FromId < 1)
+                    throw new Exception("Invalid user id");
+
+                var userId = (long)msg.FromId;
+                string displayName = null;
+                if (!DisplayNameCache.TryGetValue(userId, out displayName))
+                {
+                    var users = await ApiClient.Users.GetAsync(new[] { userId });
+                    if (users.Any())
+                    {
+                        displayName = $"{users.First().FirstName} {users.First().LastName}".Trim();
+                        DisplayNameCache.Add(userId, displayName);
+                    }
+                }
+
+                return new VkPerson(this, msg.FromId.ToString(), displayName);
+            }
+            catch (Exception)
+            {
+                var id = msg.FromId?.ToString() ?? "0";
+                return new VkPerson(this, id, $"[id{id}]");
+            }
         }
 
-        private Conversation _extractConversation(VkNet.Model.Message msg)
+        private async Task<Conversation> _extractConversation(VkNet.Model.Message msg)
         {
-            return new Conversation(this, msg.PeerId.ToString(), msg.Title);
+            if (msg.PeerId == null)
+            {
+                throw new NullReferenceException("Peer id can not be null");
+            }
+
+            var peerId = (long)msg.PeerId;
+            var vkConversation = await ApiClient.Messages.GetConversationsByIdAsync(new[] { peerId }, null, null, _groupId);
+            var title = vkConversation.Items.Any()
+                ? vkConversation.Items.First().ChatSettings.Title
+                : $"#{peerId}";
+            return new Conversation(this, peerId.ToString(), title);
         }
 
         private async void _onMessage(object sender, VkBot.MessageReceivedEventArgs e)
@@ -134,7 +207,7 @@ namespace BridgeBotNext.Providers.Vk
             Logger.LogTrace("Message received");
             var message = await _extractMessage(e.message);
 
-            if (message.Body != null && message.Body.StartsWith("/"))
+            if (!string.IsNullOrEmpty(message.Body) && message.Body.StartsWith("/"))
             {
                 OnCommandReceived(new MessageEventArgs(message));
                 return;
@@ -150,10 +223,9 @@ namespace BridgeBotNext.Providers.Vk
             return Task.CompletedTask;
         }
 
-        public override Task Disconnect()
+        public override void Dispose()
         {
             VkBot.Dispose();
-            return Task.CompletedTask;
         }
 
         private async Task<byte[]> _downloadFile(string url)
@@ -161,10 +233,7 @@ namespace BridgeBotNext.Providers.Vk
             if (url.StartsWith("data:"))
             {
                 var parts = url.Split(',', 2);
-                if (parts.Length != 2)
-                {
-                    throw new FormatException("Data URL does not contain separator");
-                }
+                if (parts.Length != 2) throw new FormatException("Data URL does not contain separator");
 
                 return Convert.FromBase64String(parts[1]);
             }
@@ -203,7 +272,7 @@ namespace BridgeBotNext.Providers.Vk
             {
                 var file = await _uploadFile(at, server, overrideFileName, overrideMimeType);
                 var document = await ApiClient.Docs.SaveAsync(file, at.FileName);
-                return document[0];
+                return document[0].Instance;
             }
             catch (Exception e)
             {
@@ -213,7 +282,7 @@ namespace BridgeBotNext.Providers.Vk
             return null;
         }
 
-        private async Task<MediaAttachment> _uploadPhoto(PhotoAttachment ph, UploadServerInfo server)
+        private async Task<MediaAttachment> _uploadPhoto(FileAttachment ph, UploadServerInfo server)
         {
             try
             {
@@ -255,23 +324,17 @@ namespace BridgeBotNext.Providers.Vk
                     await Task.WhenAll(Task.Run(async () =>
                     {
                         if (attachments.Any(at => at is PhotoAttachment))
-                        {
                             photoUploadServer = await ApiClient.Photo.GetMessagesUploadServerAsync(peerId);
-                        }
                     }), Task.Run(async () =>
                     {
                         if (attachments.Any(at => !(at is VoiceAttachment || at is PhotoAttachment)))
-                        {
                             docsUploadServer =
                                 await ApiClient.Docs.GetMessagesUploadServerAsync(peerId, DocMessageType.Doc);
-                        }
                     }), Task.Run(async () =>
                     {
                         if (attachments.Any(at => at is VoiceAttachment))
-                        {
                             voiceUploadServer =
                                 await ApiClient.Docs.GetMessagesUploadServerAsync(peerId, DocMessageType.AudioMessage);
-                        }
                     }));
 
                     #endregion
@@ -333,7 +396,6 @@ namespace BridgeBotNext.Providers.Vk
                     #region Send special attachments (contacts/urls/places)
 
                     foreach (var at in attachments)
-                    {
                         switch (at)
                         {
                             case ContactAttachment contact:
@@ -341,7 +403,7 @@ namespace BridgeBotNext.Providers.Vk
                                 {
                                     GroupId = _groupId,
                                     PeerId = peerId,
-                                    Attachments = new[] {await _uploadDocument(contact, docsUploadServer)},
+                                    Attachments = new[] { await _uploadDocument(contact, docsUploadServer) },
                                     Message = contact.ToString()
                                 });
                                 break;
@@ -364,7 +426,6 @@ namespace BridgeBotNext.Providers.Vk
                                 });
                                 break;
                         }
-                    }
 
                     #endregion
                 }
@@ -378,14 +439,12 @@ namespace BridgeBotNext.Providers.Vk
 
             var body = FormatMessageBody(message, fwd);
             if (body.Length > 0)
-            {
                 await ApiClient.Messages.SendAsync(new MessagesSendParams
                 {
                     GroupId = _groupId,
                     PeerId = peerId,
                     Message = body
                 });
-            }
 
             #endregion
         }

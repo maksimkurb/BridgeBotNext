@@ -20,12 +20,12 @@ namespace VkBotFramework
     public partial class VkBot : IDisposable
     {
         private readonly List<PhraseTemplate> _phraseTemplates = new List<PhraseTemplate>();
-        public IVkApi Api;
+        protected IVkApi Api;
 
-        public long GroupId;
+        protected long GroupId;
 
         protected ILogger<VkBot> Logger;
-        public LongPollServerResponse PollSettings;
+        protected LongPollServerResponse PollSettings;
 
         public VkBot(IServiceCollection serviceCollection = null)
         {
@@ -71,6 +71,7 @@ namespace VkBotFramework
                 var vkApiByDefault = new VkApi();
                 vkApiByDefault.RestClient.Timeout = TimeSpan.FromSeconds(30);
                 vkApiByDefault.RequestsPerSecond = 20; //  для группового access token
+                vkApiByDefault.VkApiVersion.SetVersion(5, 90); // FIXME: последний API 5.92 разделил forwarded_messages и reply_to
                 container.TryAddSingleton<IVkApi>(x => vkApiByDefault);
             }
         }
@@ -99,7 +100,7 @@ namespace VkBotFramework
             RegisterDefaultDependencies(container);
             IServiceProvider serviceProvider = container.BuildServiceProvider();
             Logger = serviceProvider.GetService<ILogger<VkBot>>();
-            Api = serviceProvider.GetService<IVkApi>(); //new VkApi(container);
+            Api = serviceProvider.GetService<IVkApi>();
             Logger.LogInformation("Все зависимости подключены.");
         }
 

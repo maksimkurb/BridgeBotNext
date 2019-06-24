@@ -1,6 +1,6 @@
 namespace BridgeBotNext.Attachments
 {
-    public class StickerAttachment : PhotoAttachment
+    public class StickerAttachment : FileAttachment
     {
         public StickerAttachment(string url, object meta) : base(url, meta)
         {
