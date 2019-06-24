@@ -19,6 +19,8 @@ namespace BridgeBotNext
 {
     internal class Program
     {
+        public static String Version => "2.0.0";
+
         private static void ConfigureServices(ServiceCollection services)
         {
             IConfiguration config = new ConfigurationBuilder()
@@ -36,8 +38,9 @@ namespace BridgeBotNext
             services.AddSingleton<TgProvider>();
 
             services.Configure<VkConfiguration>(config.GetSection("Vk"));
-
             services.AddSingleton<VkProvider>();
+
+            services.Configure<AuthConfiguration>(config.GetSection("Auth"));
 
             var connectionString = config.GetValue("database", "bridgebot.db");
             services.AddSingleton(new LiteDatabase(connectionString));
@@ -69,7 +72,7 @@ namespace BridgeBotNext
             }
 
             logger.LogInformation("Running bot with providers: {0}",
-                string.Join(" ", providers.Select(prov => prov.Name)));
+                string.Join(", ", providers.Select(prov => prov.Name)));
 
             #region Connect to providers
 
@@ -109,7 +112,7 @@ namespace BridgeBotNext
                     if (parts.Length != 2) return null;
                     foreach (var provider in providers)
                         if (provider.Name == parts[0])
-                            return new ConversationId(provider, parts[1]);
+                            return new ProviderId(provider, parts[1]);
 
                     return null;
                 });

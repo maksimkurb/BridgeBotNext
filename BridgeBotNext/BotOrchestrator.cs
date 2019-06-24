@@ -3,30 +3,45 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+
+using BridgeBotNext.Configuration;
 using BridgeBotNext.Entities;
 using BridgeBotNext.Providers;
+
 using LiteDB;
+
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace BridgeBotNext
 {
     public class BotOrchestrator
     {
-        private static readonly char[] CommandArgsSplitters = {' ', '_'};
+        private static readonly char[] CommandArgsSplitters = { ' ', '_' };
         private static readonly string BotPrefix = "🔹 ";
         private static readonly string CurrentChatPrefix = "📍";
         private readonly LiteCollection<Connection> _connections;
         private readonly LiteCollection<Conversation> _conversations;
+        private readonly LiteCollection<Person> _persons;
         private LiteDatabase _db;
         private readonly ILogger<BotOrchestrator> _logger;
         private readonly List<Provider> _providers = new List<Provider>();
+        private readonly IOptions<AuthConfiguration> _authConfiguration;
 
-        public BotOrchestrator(ILogger<BotOrchestrator> logger, LiteDatabase db)
+        public BotOrchestrator(ILogger<BotOrchestrator> logger, LiteDatabase db, IOptions<AuthConfiguration> authConfiguration)
         {
             _logger = logger;
             _db = db;
             _connections = db.GetCollection<Connection>("connections");
             _conversations = db.GetCollection<Conversation>("conversations");
+            _persons = db.GetCollection<Person>("persons");
+            _authConfiguration = authConfiguration;
+
+            if (_authConfiguration.Value == null ||
+                _authConfiguration.Value.Enabled && String.IsNullOrEmpty(_authConfiguration.Value.Password))
+            {
+                throw new Exception("Incorrect Auth settings. Auth is not configured or auth is enabled, but password is empty");
+            }
         }
 
         public void AddProvider(Provider provider)
@@ -51,7 +66,7 @@ namespace BridgeBotNext
 
             var messageBody = e.Message.Body;
             _logger.LogTrace(
-                $"Command received from {conversation.Provider.DisplayName}, conversationId: {conversation.Id}");
+                $"Command received from {conversation.Provider.DisplayName}, conversationId: {conversation.OriginId}");
 
             try
             {
@@ -63,39 +78,94 @@ namespace BridgeBotNext
                     command = messageBody.Substring(0, splitterIdx).Trim();
                     args = messageBody.Substring(splitterIdx + 1).Trim();
                 }
-            
-                
-                if (command == "/connect")
+
+                if (command == "/auth")
+                    await OnAuthCommand(e, command, args);
+                else if (command == "/start")
+                    await OnStartCommand(e, command, args);
+                else if (command == "/connect") // allow everybody to use connection token (make setup process easier)
                     await OnConnectCommand(e, command, args);
-                else if (command == "/token")
+                else if (command == "/deauth" && await _ensureHasAdminRights(e))
+                    await OnDeauthCommand(e, command, args);
+                else if (command == "/token" && await _ensureHasAdminRights(e))
                     await OnTokenCommand(e, command, args);
-                else if (command == "/list")
+                else if (command == "/list" && await _ensureHasAdminRights(e))
                     await OnListCommand(e, command, args);
-                else if (command == "/disconnect")
+                else if (command == "/disconnect" && await _ensureHasAdminRights(e))
                     await OnDisconnectCommand(e, command, args);
+                else
+                {
+                    _logger.LogTrace(
+                        $"Unknown command: {command}");
+                }
             }
             catch (Exception ex)
             {
                 var errorId = Utils.GenerateCryptoRandomString(10);
                 await conversation.SendMessage(
-                    $"{BotPrefix}Не удалось выполнить команду из-за внутренней ошибки.\nПожалуйста, свяжитесь с разработчиком (/author).\nНомер ошибки: {errorId}");
+                    $"{BotPrefix}Не удалось выполнить команду из-за внутренней ошибки.\nПожалуйста, создайте тикет на странице проекта (https://github.com/maksimkurb/BridgeBotNext) и лог-файл.\nНомер ошибки, для поиска в логах: {errorId}");
                 _logger.LogError(ex, $"Failed to process command: \"{messageBody}\" [errorId={errorId}]");
             }
         }
 
         private Conversation _findOrInsertConversation(Conversation conversation)
         {
-            var dbConversation = _conversations.FindOne(x => x.Equals(conversation));
+            var dbConversation = _conversations.FindOne(x => x.ProviderId.Equals(conversation.ProviderId));
             if (dbConversation == null)
             {
                 dbConversation = conversation;
                 _conversations.Insert(dbConversation);
-            } else if (dbConversation.Title != conversation.Title)
+            }
+            else if (dbConversation.Title != conversation.Title)
             {
                 _conversations.Update(conversation);
             }
 
             return dbConversation;
+        }
+
+        private Person _findPerson(ProviderId providerId)
+        {
+            return _persons.FindOne(x => x.ProviderId.Equals(providerId));
+        }
+
+        private async Task<bool> _ensureHasAdminRights(Provider.MessageEventArgs e)
+        {
+            if (!_authConfiguration.Value.Enabled) return true;
+
+            if (e.Message.OriginSender.IsAdmin)
+            {
+                return true;
+            }
+
+            var person = _findPerson(e.Message.OriginSender.ProviderId);
+            if (person != null && person.IsAdmin)
+            {
+                return true;
+            }
+
+            _logger.LogTrace(
+                $"Command execution access denied for {e.Message.OriginSender.ProfileUrl}");
+            await e.Message.OriginConversation.SendMessage($"{BotPrefix}Недостаточно прав для выполнения команды. Авторизуйтесь через /auth <пароль бота> (написать можно в ЛС, я запомню)");
+
+            return false;
+        }
+
+
+        private async Task OnStartCommand(Provider.MessageEventArgs e, string command, string args)
+        {
+            await e.Message.OriginConversation.SendMessage(
+                $@"{BotPrefix}Привет! Я BridgeBotNext!
+Я помогу объединить беседы из различных мессенджеров, путём пересылки сообщений из одного в другой и обратно.
+1) Убедитесь, что у бота есть доступ ко всем сообщениям в беседе.
+2) Используйте команду /token в основном чате, чтобы получить команду для соединения с другим чатом.
+3) Введите полученную команду в другой беседе, где находится этот бот.
+Вы можете посмотреть текущие соединения с помощью команды /list
+
+/Поддерживаемые мессенджеры: {string.Join(", ", _providers.Select(p => p.DisplayName))}
+/Версия_бота: {Program.Version}
+/Страница_проекта: https://github.com/maksimkurb/BridgeBotNext
+/Автор: <Maxim Kurbatov> max@cubly.ru, 2018-2019");
         }
 
         private async Task OnDisconnectCommand(Provider.MessageEventArgs e, string command, string args)
@@ -196,8 +266,55 @@ namespace BridgeBotNext
                 $"{BotPrefix}Команда для сопряжения чатов:\n/connect $mbb2${connection.Token}\n\nВведите эту команду в другом чате, чтобы подключить его к данному чату");
         }
 
+        private async Task OnAuthCommand(Provider.MessageEventArgs e, string command, string args)
+        {
+            var conversation = e.Message.OriginConversation;
+            if (!_authConfiguration.Value.Enabled)
+            {
+                await conversation.SendMessage($"{BotPrefix}Авторизация для этого бота не требуется");
+                return;
+            }
+            if (args == _authConfiguration.Value.Password)
+            {
+                var person = _findPerson(e.Message.OriginSender.ProviderId);
+                if (person != null && person.IsAdmin)
+                {
+                    await conversation.SendMessage($"{BotPrefix}Пользователь уже является администратором");
+                    return;
+                }
+                person = e.Message.OriginSender;
+                person.IsAdmin = true;
+                _persons.Insert(person);
+                await conversation.SendMessage($"{BotPrefix}Пользователь {person.DisplayName} [{person.ProfileUrl}] теперь администратор");
+            }
+            else
+            {
+                await conversation.SendMessage($"{BotPrefix}Неправильный пароль");
+            }
+        }
+        private async Task OnDeauthCommand(Provider.MessageEventArgs e, string command, string args)
+        {
+            var conversation = e.Message.OriginConversation;
+            if (!_authConfiguration.Value.Enabled)
+            {
+                await conversation.SendMessage($"{BotPrefix}Авторизация для этого бота не требуется");
+                return;
+            }
+            var providerId = string.IsNullOrEmpty(args) ? e.Message.OriginSender.ProviderId : new ProviderId(e.Message.OriginSender.Provider, args);
+            var personToDemote = _findPerson(providerId);
+            if (personToDemote != null)
+            {
+                _persons.Delete(p => p.ProviderId.Equals(providerId));
+                await conversation.SendMessage($"{BotPrefix}Пользователь {personToDemote.DisplayName} [{e.Message.OriginSender.ProfileUrl}] больше не администратор");
+            }
+            else
+            {
+                await conversation.SendMessage($"{BotPrefix}Пользователь не найден");
+            }
+        }
+
         private async Task OnConnectCommand(Provider.MessageEventArgs e, string command, string args)
-             {
+        {
 
             var conversation = _findOrInsertConversation(e.Message.OriginConversation);
 
@@ -277,13 +394,13 @@ namespace BridgeBotNext
             var provider = conversation.Provider;
 
             _logger.LogTrace(
-                $"Message received from {provider.DisplayName}, conversationId: {conversation.Id}");
+                $"Message received from {provider.DisplayName}, conversationId: {conversation.OriginId}");
 
             var connections = _connections
                 .Include(x => x.LeftConversation)
                 .Include(x => x.RightConversation)
-                .Find(x => x.LeftConversation.ConversationId == conversation.ConversationId ||
-                           x.RightConversation.ConversationId == conversation.ConversationId);
+                .Find(x => x.LeftConversation.ProviderId == conversation.ProviderId ||
+                           x.RightConversation.ProviderId == conversation.ProviderId);
 
             Task.WhenAll(connections.Select(connection =>
             {
@@ -301,10 +418,10 @@ namespace BridgeBotNext
                         otherConversation = connection.LeftConversation;
                         break;
                     case ConnectionDirection.ToRight when Equals(connection.LeftConversation, conversation):
-                    {
-                        otherConversation = connection.RightConversation;
-                        break;
-                    }
+                        {
+                            otherConversation = connection.RightConversation;
+                            break;
+                        }
                 }
 
                 if (otherConversation != null) return otherConversation.SendMessage(e.Message);

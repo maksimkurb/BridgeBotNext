@@ -82,8 +82,8 @@ namespace BridgeBotNext.Providers.Tg
 
         public override async Task SendMessage(Conversation conversation, Message message)
         {
-            Logger.LogTrace("Send message to conversation {0}", conversation.Id);
-            var chat = new ChatId(Convert.ToInt64(conversation.Id));
+            Logger.LogTrace("Send message to conversation {0}", conversation.OriginId);
+            var chat = new ChatId(Convert.ToInt64(conversation.OriginId));
 
             #region Get forwarded and attachments
 
@@ -96,7 +96,7 @@ namespace BridgeBotNext.Providers.Tg
 
             var body = FormatMessageBody(message, fwd);
             if (body.Length > 0)
-                await BotClient.SendTextMessageAsync(new ChatId(conversation.Id), body, ParseMode.Html, true);
+                await BotClient.SendTextMessageAsync(new ChatId(conversation.OriginId), body, ParseMode.Html, true);
 
             #endregion
 
@@ -257,7 +257,7 @@ namespace BridgeBotNext.Providers.Tg
 
         private Conversation _extractConversation(Chat tgChat)
         {
-            return new Conversation(this, tgChat.Id.ToString(), tgChat.Title);
+            return new Conversation(this, tgChat.Id.ToString(), tgChat.Title ?? tgChat.Username ?? $"#{tgChat.Id}");
         }
 
         private TgPerson _extractPerson(User tgUser)
@@ -265,7 +265,7 @@ namespace BridgeBotNext.Providers.Tg
             var fullName = new StringBuilder().Append(tgUser.FirstName);
             if (tgUser.LastName != null)
                 fullName.AppendFormat(" {0}", tgUser.LastName);
-            return new TgPerson(this, tgUser.Id, fullName.ToString());
+            return new TgPerson(this, tgUser.Id, tgUser.Username, fullName.ToString());
         }
 
         /**

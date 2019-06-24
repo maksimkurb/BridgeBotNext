@@ -19,7 +19,7 @@ namespace BridgeBotNextTest.Telegram
 
         public void SendTestButtons(Conversation conversation)
         {
-            var chat = new ChatId(Convert.ToInt64(conversation.Id));
+            var chat = new ChatId(Convert.ToInt64(conversation.OriginId));
             IEnumerable<KeyboardButton> keys = new[]
             {
                 new KeyboardButton("/pass"),

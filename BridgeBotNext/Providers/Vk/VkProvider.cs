@@ -17,6 +17,8 @@ using Microsoft.Extensions.Options;
 
 using MoreLinq.Extensions;
 
+using SkiaSharp;
+
 using VkBotFramework;
 
 using VkNet;
@@ -41,6 +43,7 @@ namespace BridgeBotNext.Providers.Vk
         private readonly ulong _groupId;
         protected ILogger<VkProvider> Logger;
         protected LRUCache<long, string> DisplayNameCache;
+        private readonly Random random = new Random();
 
         public VkProvider(ILogger<VkProvider> logger, ILogger<VkBot> botLogger, ILogger<VkApi> apiLogger,
             IOptions<VkConfiguration> configuration)
@@ -197,7 +200,7 @@ namespace BridgeBotNext.Providers.Vk
             var peerId = (long)msg.PeerId;
             var vkConversation = await ApiClient.Messages.GetConversationsByIdAsync(new[] { peerId }, null, null, _groupId);
             var title = vkConversation.Items.Any()
-                ? vkConversation.Items.First().ChatSettings.Title
+                ? vkConversation.Items.First()?.ChatSettings?.Title ?? $"#{peerId}"
                 : $"#{peerId}";
             return new Conversation(this, peerId.ToString(), title);
         }
@@ -247,6 +250,19 @@ namespace BridgeBotNext.Providers.Vk
         {
             var file = await _downloadFile(at.Url);
 
+            if (at.MimeType.StartsWith("image/") && at.MimeType != "image/png" && at.MimeType != "image/jpeg" && at.MimeType != "image/gif")
+            {
+                var image = SKImage.FromBitmap(SKBitmap.Decode(file));
+                using (var p = image.Encode(SKEncodedImageFormat.Png, 100))
+                using (MemoryStream ms = new MemoryStream())
+                {
+                    p.AsStream().CopyTo(ms);
+                    file = ms.ToArray();
+                    overrideMimeType = "image/png";
+                    overrideFileName = "image.png";
+                }
+            }
+
             var postParameters = new Dictionary<string, object>
             {
                 {
@@ -256,7 +272,7 @@ namespace BridgeBotNext.Providers.Vk
             };
 
             using (var webResponse =
-                FormUpload.MultipartFormDataPost(server.UploadUrl, "MeBridgeBot/2", postParameters))
+                FormUpload.MultipartFormDataPost(server?.UploadUrl, "MeBridgeBot/2", postParameters))
             {
                 var responseReader = new StreamReader(webResponse.GetResponseStream() ??
                                                       throw new NullReferenceException("Response stream is null"));
@@ -300,8 +316,8 @@ namespace BridgeBotNext.Providers.Vk
 
         public override async Task SendMessage(Conversation conversation, Message message)
         {
-            Logger.LogTrace("Send message to conversation {0}", conversation.Id);
-            var peerId = Convert.ToInt32(conversation.Id);
+            Logger.LogTrace("Send message to conversation {0}", conversation.OriginId);
+            var peerId = Convert.ToInt32(conversation.OriginId);
 
             #region Get forwarded and attachments
 
@@ -310,6 +326,19 @@ namespace BridgeBotNext.Providers.Vk
 
             #endregion
 
+            #region Send message
+
+            var body = FormatMessageBody(message, fwd);
+            if (body.Length > 0)
+                await ApiClient.Messages.SendAsync(new MessagesSendParams
+                {
+                    GroupId = _groupId,
+                    PeerId = peerId,
+                    Message = body,
+                    RandomId = random.Next()
+                });
+
+            #endregion
 
             if (attachments.Any())
             {
@@ -323,7 +352,7 @@ namespace BridgeBotNext.Providers.Vk
                     UploadServerInfo voiceUploadServer = null;
                     await Task.WhenAll(Task.Run(async () =>
                     {
-                        if (attachments.Any(at => at is PhotoAttachment))
+                        if (attachments.Any(at => (at is PhotoAttachment || at is StickerAttachment)))
                             photoUploadServer = await ApiClient.Photo.GetMessagesUploadServerAsync(peerId);
                     }), Task.Run(async () =>
                     {
@@ -387,7 +416,8 @@ namespace BridgeBotNext.Providers.Vk
                         {
                             GroupId = _groupId,
                             PeerId = peerId,
-                            Attachments = vkAttachments
+                            Attachments = vkAttachments,
+                            RandomId = random.Next()
                         });
                     }
 
@@ -404,7 +434,8 @@ namespace BridgeBotNext.Providers.Vk
                                     GroupId = _groupId,
                                     PeerId = peerId,
                                     Attachments = new[] { await _uploadDocument(contact, docsUploadServer) },
-                                    Message = contact.ToString()
+                                    Message = contact.ToString(),
+                                    RandomId = random.Next()
                                 });
                                 break;
                             case LinkAttachment link:
@@ -412,7 +443,8 @@ namespace BridgeBotNext.Providers.Vk
                                 {
                                     GroupId = _groupId,
                                     PeerId = peerId,
-                                    Message = link.ToString()
+                                    Message = link.ToString(),
+                                    RandomId = random.Next()
                                 });
                                 break;
                             case PlaceAttachment place:
@@ -422,7 +454,8 @@ namespace BridgeBotNext.Providers.Vk
                                     PeerId = peerId,
                                     Lat = place.Latitude,
                                     Longitude = place.Longitude, // typo in lib
-                                    Message = place.ToString()
+                                    Message = place.ToString(),
+                                    RandomId = random.Next()
                                 });
                                 break;
                         }
@@ -435,18 +468,6 @@ namespace BridgeBotNext.Providers.Vk
                 }
             }
 
-            #region Send message
-
-            var body = FormatMessageBody(message, fwd);
-            if (body.Length > 0)
-                await ApiClient.Messages.SendAsync(new MessagesSendParams
-                {
-                    GroupId = _groupId,
-                    PeerId = peerId,
-                    Message = body
-                });
-
-            #endregion
         }
     }
 }

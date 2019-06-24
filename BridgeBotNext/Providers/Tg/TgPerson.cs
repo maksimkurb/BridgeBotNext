@@ -1,3 +1,4 @@
+
 using BridgeBotNext.Entities;
 
 namespace BridgeBotNext.Providers.Tg
@@ -5,18 +6,19 @@ namespace BridgeBotNext.Providers.Tg
     /// <inheritdoc />
     public class TgPerson : Person
     {
-        public TgPerson(TgProvider provider, int id, string displayName)
+        public TgPerson() : base() { }
+
+        public TgPerson(TgProvider provider, int id, string displayName) : base(provider, id.ToString(), displayName)
         {
-            Provider = provider;
-            NumericPersonId = id;
-            DisplayName = displayName;
+        }
+        public TgPerson(TgProvider provider, int id, string username, string displayName) : this(provider, id, displayName)
+        {
+            this.Username = username;
         }
 
-        private int NumericPersonId { get; }
-        public override Provider Provider { get; }
-        public override string PersonId => NumericPersonId.ToString();
-        public override string DisplayName { get; }
+        public string Username { get; set; }
 
-        public override string ProfileUrl => $"https://t.me/{PersonId}";
+        public override string ProfileUrl => !string.IsNullOrEmpty(Username) ? $"https://t.me/{Username}" : "<no_username>";
+
     }
 }
