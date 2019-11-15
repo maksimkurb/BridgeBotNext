@@ -6,7 +6,7 @@
   "keywords": [ "c#", "bot", "telegram", "vkontakte", "bridge" ],
   "buildpacks": [
     {
-      "url": "https://github.com/jincod/dotnetcore-buildpack#3.0.100"
+      "url": "jincod/dotnetcore"
     }
   ]
 }
