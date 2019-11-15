@@ -4,6 +4,29 @@
   "repository": "https://github.com/maksimkurb/BridgeBotNext",
   "logo": "https://raw.githubusercontent.com/maksimkurb/BridgeBotNext/master/static/angry-logo.png",
   "keywords": [ "c#", "bot", "telegram", "vkontakte", "bridge" ],
+  "env": {
+    "BOT_VK__ACCESSTOKEN": {
+      "description": "Access token of VK bot",
+      "generator": "aabbcc"
+    },
+    "BOT_VK__GROUPID": {
+      "description": "VK group id",
+      "value": "12345"
+    },
+    "BOT_TG__BOTTOKEN": {
+      "description": "Access token of Telegram bot",
+      "value": "12345:aabbcc"
+    },
+    "BOT_AUTH__ENABLED": {
+      "description": "Is bot settings protected with password",
+      "value": "false"
+    },
+    "BOT_AUTH__PASSWORD": {
+      "description": "Bot password, if enabled",
+      "generator": "secret",
+      "required": false
+    }
+  },
   "buildpacks": [
     {
       "url": "jincod/dotnetcore"
