@@ -8,9 +8,13 @@ using BridgeBotNext.Providers;
 using BridgeBotNext.Providers.Tg;
 using BridgeBotNext.Providers.Vk;
 using LiteDB;
+using Microsoft.AspNetCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using MixERP.Net.VCards.Extensions;
 
 namespace BridgeBotNext
 {
@@ -18,36 +22,19 @@ namespace BridgeBotNext
     {
         public static string Version => "2.0.0";
 
-        private static void ConfigureServices(ServiceCollection services)
-        {
-            IConfiguration config = new ConfigurationBuilder()
-                .AddJsonFile("appsettings.json", true, false)
-                .AddEnvironmentVariables("BOT_")
-                .Build();
-
-            services
-                .AddLogging(configure => configure.AddConsole())
-                .Configure<LoggerFilterOptions>(options => options.MinLevel = LogLevel.Trace);
-
-            services.AddSingleton<BotOrchestrator>();
-
-            services.Configure<TgConfiguration>(config.GetSection("Tg"));
-            services.AddSingleton<TgProvider>();
-
-            services.Configure<VkConfiguration>(config.GetSection("Vk"));
-            services.AddSingleton<VkProvider>();
-
-            services.Configure<AuthConfiguration>(config.GetSection("Auth"));
-
-            var connectionString = config.GetValue("database", "bridgebot.db");
-            services.AddSingleton(new LiteDatabase(connectionString));
-        }
-
+        public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
+            WebHost.CreateDefaultBuilder(args)
+                .UseStartup<Startup>()
+                .UseKestrel(options =>
+                {
+                    options.ListenAnyIP(Int32.Parse(Environment.GetEnvironmentVariable("PORT").Or("8080")));
+                });
+        
         private static void Main(string[] args)
         {
             var serviceCollection = new ServiceCollection();
-            ConfigureServices(serviceCollection);
-            var serviceProvider = serviceCollection.BuildServiceProvider();
+            var webHost = CreateWebHostBuilder(args).Build();
+            var serviceProvider = webHost.Services;
 
             var logger = serviceProvider.GetService<ILogger<Program>>();
 
@@ -122,8 +109,13 @@ namespace BridgeBotNext
 
             #region Graceful shutdown
 
-            ConsoleHost.WaitForShutdown();
-
+            if (!Environment.GetEnvironmentVariable("PORT").IsNullOrEmpty())
+            {
+                webHost.Run();
+            } else {
+                ConsoleHost.WaitForShutdown();
+            }
+            
             logger.LogInformation("Graceful shutdown");
             foreach (var provider in providers) orchestrator.RemoveProvider(provider);
 
