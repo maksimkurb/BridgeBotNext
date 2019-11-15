@@ -20,10 +20,9 @@ namespace BridgeBotNext.Providers.Tg
                     // If timer is timed out, then media group is probably fully received
                     lock (_mediaGroups)
                     {
-                        if (MediaGroupReceived != null)
-                            MediaGroupReceived(this,
-                                new MediaGroupEventArgs(_mediaGroups[mediaGroupId].Message,
-                                    _mediaGroups[mediaGroupId].Attachments.ToArray()));
+                        MediaGroupReceived?.Invoke(this,
+                            new MediaGroupEventArgs(_mediaGroups[mediaGroupId].Message,
+                                _mediaGroups[mediaGroupId].Attachments.ToArray()));
 
                         _mediaGroups[mediaGroupId].Dispose();
                         _mediaGroups.Remove(mediaGroupId);
@@ -37,10 +36,9 @@ namespace BridgeBotNext.Providers.Tg
                 // If there is already 10 attachments, then media group is fully received
                 if (mediaGroup.Attachments.Count >= 10)
                 {
-                    if (MediaGroupReceived != null)
-                        MediaGroupReceived(this,
-                            new MediaGroupEventArgs(_mediaGroups[mediaGroupId].Message,
-                                _mediaGroups[mediaGroupId].Attachments.ToArray()));
+                    MediaGroupReceived?.Invoke(this,
+                        new MediaGroupEventArgs(_mediaGroups[mediaGroupId].Message,
+                            _mediaGroups[mediaGroupId].Attachments.ToArray()));
 
                     mediaGroup.Dispose();
                     _mediaGroups.Remove(mediaGroupId);

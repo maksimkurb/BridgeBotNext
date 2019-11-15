@@ -1,0 +1,3 @@
+[submodule "vk-captcha-analyzer"]
+	path = vk-captcha-analyzer
+	url = git@github.com:vknet/vk-captcha-analyzer.git

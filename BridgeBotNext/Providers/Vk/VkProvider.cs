@@ -5,22 +5,14 @@ using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using System.Web;
-
 using BridgeBotNext.Attachments;
 using BridgeBotNext.Configuration;
 using BridgeBotNext.Entities;
-
 using Caching;
-
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-
 using MoreLinq.Extensions;
-
 using SkiaSharp;
-
-using VkBotFramework;
-
 using VkNet;
 using VkNet.Abstractions;
 using VkNet.Enums;
@@ -28,7 +20,6 @@ using VkNet.Enums.SafetyEnums;
 using VkNet.Model;
 using VkNet.Model.Attachments;
 using VkNet.Model.RequestParams;
-
 using Attachment = BridgeBotNext.Attachments.Attachment;
 using Conversation = BridgeBotNext.Entities.Conversation;
 using Message = BridgeBotNext.Entities.Message;
@@ -38,32 +29,57 @@ namespace BridgeBotNext.Providers.Vk
     public class VkProvider : Provider
     {
         private readonly string _accessToken;
-        protected readonly IVkApi ApiClient;
-        protected readonly VkBot VkBot;
+
         private readonly ulong _groupId;
-        protected ILogger<VkProvider> Logger;
-        protected LRUCache<long, string> DisplayNameCache;
+
+        protected readonly IVkApi ApiClient;
+        protected readonly IVkApi InboundClient;
         private readonly Random random = new Random();
 
-        public VkProvider(ILogger<VkProvider> logger, ILogger<VkBot> botLogger, ILogger<VkApi> apiLogger,
+        protected readonly VkLongPoll VkPoller;
+        protected LRUCache<long, string> DisplayNameCache;
+        protected ILogger<VkProvider> Logger;
+
+        public VkProvider(ILogger<VkProvider> logger,
+            ILogger<VkLongPoll> pollLogger,
+            ILogger<VkApi> apiLogger,
             IOptions<VkConfiguration> configuration)
         {
             _accessToken = configuration.Value.AccessToken;
             _groupId = configuration.Value.GroupId;
             Logger = logger;
-            VkBot = new VkBot(_accessToken, (int)_groupId, botLogger);
+
+            InboundClient = new VkApi(apiLogger);
             ApiClient = new VkApi(apiLogger);
-            ApiClient.Authorize(new ApiAuthParams
+
+            _setApiVersion(5, 90);
+            _authorize(new ApiAuthParams
             {
                 AccessToken = _accessToken
             });
+
+            VkPoller = new VkLongPoll(InboundClient, _groupId, pollLogger);
+
+
             DisplayNameCache = new LRUCache<long, string>(1000, 6);
 
-            VkBot.OnMessageReceived += _onMessage;
+            VkPoller.OnMessageReceived += _onMessage;
         }
 
         public override string Name => "vk";
         public override string DisplayName => "Vkontakte";
+
+        private void _setApiVersion(int major, int minor)
+        {
+            InboundClient.VkApiVersion.SetVersion(major, minor);
+            ApiClient.VkApiVersion.SetVersion(major, minor);
+        }
+
+        private void _authorize(ApiAuthParams authParams)
+        {
+            InboundClient.Authorize(authParams);
+            ApiClient.Authorize(authParams);
+        }
 
         private async Task<Message> _extractMessage(VkNet.Model.Message msg, bool extractConversation = true)
         {
@@ -76,18 +92,13 @@ namespace BridgeBotNext.Providers.Vk
                 {
                     if (extractConversation) conversation = await _extractConversation(msg);
                 }),
+                Task.Run(async () => { person = await _extractPerson(msg); }),
                 Task.Run(async () =>
                 {
-                    person = await _extractPerson(msg);
+                    forwarded = await Task.WhenAll(
+                        msg.ForwardedMessages.Select(fwd => _extractMessage(fwd, false)));
                 }),
-                Task.Run(async () =>
-                {
-                    forwarded = await Task.WhenAll(msg.ForwardedMessages.Select(fwd => _extractMessage(fwd, false)));
-                }),
-                Task.Run(() =>
-                {
-                    attachments = _extractAttachments(msg);
-                })
+                Task.Run(() => { attachments = _extractAttachments(msg); })
             );
             var body = msg.Text ?? "";
             return new Message(conversation, person, body, forwarded, attachments);
@@ -100,63 +111,67 @@ namespace BridgeBotNext.Providers.Vk
             var attachments = new List<Attachment>();
 
             foreach (var at in msg.Attachments)
-                if (at.Instance is Photo photo)
+                switch (at.Instance)
                 {
-                    var maxPhoto = photo.Sizes.MaxBy(p => p.Width).First();
-                    attachments.Add(new PhotoAttachment(maxPhoto.Url.ToString(), photo, photo.Text,
-                        mimeType: "image/jpeg"));
-                }
-                else if (at.Instance is Video video)
-                {
-                    attachments.Add(new LinkAttachment($"https://vk.com/video{video.OwnerId}_{video.Id}", video, $"📹{video.Title}"));
-                }
-                else if (at.Instance is Audio audio)
-                {
-                    var audioName = $"{audio.Title.Replace('+', ' ')} - {audio.Artist.Replace('+', ' ')}";
-                    attachments.Add(new LinkAttachment(
-                        $"https://vk.com/audio?q={HttpUtility.UrlEncode(audioName)}", audio, $"🎵{audioName}"));
-                }
-                else if (at.Instance is Document doc)
-                {
-                    if (doc.Type == DocumentTypeEnum.Gif)
+                    case Photo photo:
+                    {
+                        var maxPhoto = photo.Sizes.MaxBy(p => p.Width).First();
+                        attachments.Add(new PhotoAttachment(maxPhoto.Url.ToString(), photo, photo.Text,
+                            mimeType: "image/jpeg"));
+                        break;
+                    }
+                    case Video video:
+                        attachments.Add(new LinkAttachment($"https://vk.com/video{video.OwnerId}_{video.Id}", video,
+                            $"📹{video.Title}"));
+                        break;
+                    case Audio audio:
+                    {
+                        var audioName = $"{audio.Title.Replace('+', ' ')} - {audio.Artist.Replace('+', ' ')}";
+                        attachments.Add(new LinkAttachment(
+                            $"https://vk.com/audio?q={HttpUtility.UrlEncode(audioName)}", audio, $"🎵{audioName}"));
+                        break;
+                    }
+                    case Document doc when doc.Type == DocumentTypeEnum.Gif:
                         attachments.Add(new AnimationAttachment(doc.Uri, doc, doc.Title, fileSize: doc.Size ?? 0));
-                    else if (doc.Type == DocumentTypeEnum.Video)
+                        break;
+                    case Document doc when doc.Type == DocumentTypeEnum.Video:
                         attachments.Add(new VideoAttachment(doc.Uri, doc, doc.Title, fileSize: doc.Size ?? 0));
-                    else
+                        break;
+                    case Document doc:
                         attachments.Add(new FileAttachment(doc.Uri, doc, doc.Title, fileSize: doc.Size));
-                }
-                else if (at.Instance is Link link)
-                {
-                    attachments.Add(new LinkAttachment(link.Uri.ToString(), link, $"🔗{link.Title}"));
-                }
-                else if (at.Instance is Market market)
-                {
-                    attachments.Add(new LinkAttachment(
-                        $"https://vk.com/market{market.OwnerId}?w=product{market.OwnerId}_{market.Id}", market));
-                }
-                else if (at.Instance is MarketAlbum marketAlbum)
-                {
-                    attachments.Add(new LinkAttachment(
-                        $"https://vk.com/market{marketAlbum.OwnerId}?section=album_{marketAlbum.Id}", marketAlbum));
-                }
-                else if (at.Instance is Wall wall)
-                {
-                    attachments.Add(new LinkAttachment($"https://vk.com/wall{wall.OwnerId}_{wall.Id}", wall));
-                }
-                else if (at.Instance is Sticker sticker)
-                {
-                    var maxSticker = sticker.Images.MaxBy(s => s.Width).First();
-                    attachments.Add(new StickerAttachment(maxSticker.Url.ToString(), sticker));
-                }
-                else if (at.Instance is Gift gift)
-                {
-                    var giftUri = gift.Thumb256 ?? gift.Thumb96 ?? gift.Thumb48;
-                    attachments.Add(new PhotoAttachment(giftUri.ToString(), gift, "<gift>"));
+                        break;
+                    case Link link:
+                        attachments.Add(new LinkAttachment(link.Uri.ToString(), link, $"🔗{link.Title}"));
+                        break;
+                    case Market market:
+                        attachments.Add(new LinkAttachment(
+                            $"https://vk.com/market{market.OwnerId}?w=product{market.OwnerId}_{market.Id}", market));
+                        break;
+                    case MarketAlbum marketAlbum:
+                        attachments.Add(new LinkAttachment(
+                            $"https://vk.com/market{marketAlbum.OwnerId}?section=album_{marketAlbum.Id}", marketAlbum));
+                        break;
+                    case Wall wall:
+                        attachments.Add(new LinkAttachment($"https://vk.com/wall{wall.OwnerId}_{wall.Id}", wall));
+                        break;
+                    case Sticker sticker:
+                    {
+                        var maxSticker = sticker.Images.MaxBy(s => s.Width).First();
+                        attachments.Add(new StickerAttachment(maxSticker.Url.ToString(), sticker));
+                        break;
+                    }
+                    case Gift gift:
+                    {
+                        var giftUri = gift.Thumb256 ?? gift.Thumb96 ?? gift.Thumb48;
+                        attachments.Add(new PhotoAttachment(giftUri.ToString(), gift, "<gift>"));
+                        break;
+                    }
                 }
 
             if (msg.Geo != null)
             {
-                attachments.Add(new PlaceAttachment(msg.Geo.Coordinates.Latitude, msg.Geo.Coordinates.Longitude, msg.Geo.Place.Title, msg.Geo.Place.Address));
+                attachments.Add(new PlaceAttachment(msg.Geo.Coordinates.Latitude, msg.Geo.Coordinates.Longitude,
+                    msg.Geo.Place.Title, msg.Geo.Place.Address));
             }
 
             return attachments;
@@ -169,11 +184,11 @@ namespace BridgeBotNext.Providers.Vk
                 if (msg.FromId == null || msg.FromId < 1)
                     throw new Exception("Invalid user id");
 
-                var userId = (long)msg.FromId;
+                var userId = (long) msg.FromId;
                 string displayName = null;
                 if (!DisplayNameCache.TryGetValue(userId, out displayName))
                 {
-                    var users = await ApiClient.Users.GetAsync(new[] { userId });
+                    var users = await ApiClient.Users.GetAsync(new[] {userId});
                     if (users.Any())
                     {
                         displayName = $"{users.First().FirstName} {users.First().LastName}".Trim();
@@ -197,15 +212,16 @@ namespace BridgeBotNext.Providers.Vk
                 throw new NullReferenceException("Peer id can not be null");
             }
 
-            var peerId = (long)msg.PeerId;
-            var vkConversation = await ApiClient.Messages.GetConversationsByIdAsync(new[] { peerId }, null, null, _groupId);
+            var peerId = (long) msg.PeerId;
+            var vkConversation =
+                await ApiClient.Messages.GetConversationsByIdAsync(new[] {peerId}, null, null, _groupId);
             var title = vkConversation.Items.Any()
                 ? vkConversation.Items.First()?.ChatSettings?.Title ?? $"#{peerId}"
                 : $"#{peerId}";
             return new Conversation(this, peerId.ToString(), title);
         }
 
-        private async void _onMessage(object sender, VkBot.MessageReceivedEventArgs e)
+        private async void _onMessage(object sender, VkLongPoll.MessageReceivedEventArgs e)
         {
             Logger.LogTrace("Message received");
             var message = await _extractMessage(e.message);
@@ -222,13 +238,13 @@ namespace BridgeBotNext.Providers.Vk
 
         public override Task Connect()
         {
-            Task.Run(VkBot.StartAsync);
+            VkPoller.StartPolling();
             return Task.CompletedTask;
         }
 
         public override void Dispose()
         {
-            VkBot.Dispose();
+            VkPoller.Dispose();
         }
 
         private async Task<byte[]> _downloadFile(string url)
@@ -250,7 +266,8 @@ namespace BridgeBotNext.Providers.Vk
         {
             var file = await _downloadFile(at.Url);
 
-            if (at.MimeType.StartsWith("image/") && at.MimeType != "image/png" && at.MimeType != "image/jpeg" && at.MimeType != "image/gif")
+            if (at.MimeType.StartsWith("image/") && at.MimeType != "image/png" && at.MimeType != "image/jpeg" &&
+                at.MimeType != "image/gif")
             {
                 var image = SKImage.FromBitmap(SKBitmap.Decode(file));
                 using (var p = image.Encode(SKEncodedImageFormat.Png, 100))
@@ -433,7 +450,7 @@ namespace BridgeBotNext.Providers.Vk
                                 {
                                     GroupId = _groupId,
                                     PeerId = peerId,
-                                    Attachments = new[] { await _uploadDocument(contact, docsUploadServer) },
+                                    Attachments = new[] {await _uploadDocument(contact, docsUploadServer)},
                                     Message = contact.ToString(),
                                     RandomId = random.Next()
                                 });
@@ -467,7 +484,6 @@ namespace BridgeBotNext.Providers.Vk
                     Logger.LogError("Attachments upload failed {0}", e);
                 }
             }
-
         }
     }
 }

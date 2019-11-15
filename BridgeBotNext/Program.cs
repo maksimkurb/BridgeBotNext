@@ -2,15 +2,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-
 using BridgeBotNext.Configuration;
 using BridgeBotNext.Entities;
 using BridgeBotNext.Providers;
 using BridgeBotNext.Providers.Tg;
 using BridgeBotNext.Providers.Vk;
-
 using LiteDB;
-
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -19,7 +16,7 @@ namespace BridgeBotNext
 {
     internal class Program
     {
-        public static String Version => "2.0.0";
+        public static string Version => "2.0.0";
 
         private static void ConfigureServices(ServiceCollection services)
         {

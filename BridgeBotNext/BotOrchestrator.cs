@@ -3,13 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-
 using BridgeBotNext.Configuration;
 using BridgeBotNext.Entities;
 using BridgeBotNext.Providers;
-
 using LiteDB;
-
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -17,18 +14,19 @@ namespace BridgeBotNext
 {
     public class BotOrchestrator
     {
-        private static readonly char[] CommandArgsSplitters = { ' ', '_' };
+        private static readonly char[] CommandArgsSplitters = {' ', '_'};
         private static readonly string BotPrefix = "🔹 ";
         private static readonly string CurrentChatPrefix = "📍";
+        private readonly IOptions<AuthConfiguration> _authConfiguration;
         private readonly LiteCollection<Connection> _connections;
         private readonly LiteCollection<Conversation> _conversations;
-        private readonly LiteCollection<Person> _persons;
-        private LiteDatabase _db;
         private readonly ILogger<BotOrchestrator> _logger;
+        private readonly LiteCollection<Person> _persons;
         private readonly List<Provider> _providers = new List<Provider>();
-        private readonly IOptions<AuthConfiguration> _authConfiguration;
+        private LiteDatabase _db;
 
-        public BotOrchestrator(ILogger<BotOrchestrator> logger, LiteDatabase db, IOptions<AuthConfiguration> authConfiguration)
+        public BotOrchestrator(ILogger<BotOrchestrator> logger, LiteDatabase db,
+            IOptions<AuthConfiguration> authConfiguration)
         {
             _logger = logger;
             _db = db;
@@ -40,7 +38,8 @@ namespace BridgeBotNext
             if (_authConfiguration.Value == null ||
                 _authConfiguration.Value.Enabled && String.IsNullOrEmpty(_authConfiguration.Value.Password))
             {
-                throw new Exception("Incorrect Auth settings. Auth is not configured or auth is enabled, but password is empty");
+                throw new Exception(
+                    "Incorrect Auth settings. Auth is not configured or auth is enabled, but password is empty");
             }
         }
 
@@ -89,7 +88,8 @@ namespace BridgeBotNext
                     await OnDeauthCommand(e, command, args);
                 else if (command == "/token" && await _ensureHasAdminRights(e))
                     await OnTokenCommand(e, command, args);
-                else if (command == "/list" && await _ensureHasAdminRights(e))
+                else if (command == "/list"
+                ) // allow everybody to use list command (everybody have rights to see where messages are resending)
                     await OnListCommand(e, command, args);
                 else if (command == "/disconnect" && await _ensureHasAdminRights(e))
                     await OnDisconnectCommand(e, command, args);
@@ -146,7 +146,8 @@ namespace BridgeBotNext
 
             _logger.LogTrace(
                 $"Command execution access denied for {e.Message.OriginSender.ProfileUrl}");
-            await e.Message.OriginConversation.SendMessage($"{BotPrefix}Недостаточно прав для выполнения команды. Авторизуйтесь через /auth <пароль бота> (написать можно в ЛС, я запомню)");
+            await e.Message.OriginConversation.SendMessage(
+                $"{BotPrefix}Недостаточно прав для выполнения команды. Авторизуйтесь через /auth <пароль бота> (написать можно в ЛС, я запомню)");
 
             return false;
         }
@@ -162,7 +163,7 @@ namespace BridgeBotNext
 3) Введите полученную команду в другой беседе, где находится этот бот.
 Вы можете посмотреть текущие соединения с помощью команды /list
 
-/Поддерживаемые мессенджеры: {string.Join(", ", _providers.Select(p => p.DisplayName))}
+/Поддерживаемые_мессенджеры: {string.Join(", ", _providers.Select(p => p.DisplayName))}
 /Версия_бота: {Program.Version}
 /Страница_проекта: https://github.com/maksimkurb/BridgeBotNext
 /Автор: <Maxim Kurbatov> max@cubly.ru, 2018-2019");
@@ -274,6 +275,7 @@ namespace BridgeBotNext
                 await conversation.SendMessage($"{BotPrefix}Авторизация для этого бота не требуется");
                 return;
             }
+
             if (args == _authConfiguration.Value.Password)
             {
                 var person = _findPerson(e.Message.OriginSender.ProviderId);
@@ -282,16 +284,19 @@ namespace BridgeBotNext
                     await conversation.SendMessage($"{BotPrefix}Пользователь уже является администратором");
                     return;
                 }
+
                 person = e.Message.OriginSender;
                 person.IsAdmin = true;
                 _persons.Insert(person);
-                await conversation.SendMessage($"{BotPrefix}Пользователь {person.DisplayName} [{person.ProfileUrl}] теперь администратор");
+                await conversation.SendMessage(
+                    $"{BotPrefix}Пользователь {person.DisplayName} [{person.ProfileUrl}] теперь администратор");
             }
             else
             {
                 await conversation.SendMessage($"{BotPrefix}Неправильный пароль");
             }
         }
+
         private async Task OnDeauthCommand(Provider.MessageEventArgs e, string command, string args)
         {
             var conversation = e.Message.OriginConversation;
@@ -300,12 +305,16 @@ namespace BridgeBotNext
                 await conversation.SendMessage($"{BotPrefix}Авторизация для этого бота не требуется");
                 return;
             }
-            var providerId = string.IsNullOrEmpty(args) ? e.Message.OriginSender.ProviderId : new ProviderId(e.Message.OriginSender.Provider, args);
+
+            var providerId = string.IsNullOrEmpty(args)
+                ? e.Message.OriginSender.ProviderId
+                : new ProviderId(e.Message.OriginSender.Provider, args);
             var personToDemote = _findPerson(providerId);
             if (personToDemote != null)
             {
                 _persons.Delete(p => p.ProviderId.Equals(providerId));
-                await conversation.SendMessage($"{BotPrefix}Пользователь {personToDemote.DisplayName} [{e.Message.OriginSender.ProfileUrl}] больше не администратор");
+                await conversation.SendMessage(
+                    $"{BotPrefix}Пользователь {personToDemote.DisplayName} [{e.Message.OriginSender.ProfileUrl}] больше не администратор");
             }
             else
             {
@@ -315,7 +324,6 @@ namespace BridgeBotNext
 
         private async Task OnConnectCommand(Provider.MessageEventArgs e, string command, string args)
         {
-
             var conversation = _findOrInsertConversation(e.Message.OriginConversation);
 
             if (string.IsNullOrEmpty(args))
@@ -418,10 +426,10 @@ namespace BridgeBotNext
                         otherConversation = connection.LeftConversation;
                         break;
                     case ConnectionDirection.ToRight when Equals(connection.LeftConversation, conversation):
-                        {
-                            otherConversation = connection.RightConversation;
-                            break;
-                        }
+                    {
+                        otherConversation = connection.RightConversation;
+                        break;
+                    }
                 }
 
                 if (otherConversation != null) return otherConversation.SendMessage(e.Message);

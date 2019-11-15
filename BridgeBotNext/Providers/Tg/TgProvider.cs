@@ -4,25 +4,18 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
-
 using BridgeBotNext.Attachments;
 using BridgeBotNext.Configuration;
 using BridgeBotNext.Entities;
-
 using HeyRed.Mime;
-
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-
 using MoreLinq;
-
 using SkiaSharp;
-
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.InputFiles;
-
 using Message = BridgeBotNext.Entities.Message;
 
 namespace BridgeBotNext.Providers.Tg
@@ -115,24 +108,34 @@ namespace BridgeBotNext.Providers.Tg
                         switch (media)
                         {
                             case PhotoAttachment albumPhoto:
+                            {
+                                if (albumPhoto.Meta is PhotoSize photo)
+                                    return new InputMediaPhoto(new InputMedia(photo.FileId));
+                                var tgPhoto = new InputMediaPhoto(new InputMedia(albumPhoto.Url))
                                 {
-                                    if (albumPhoto.Meta is PhotoSize photo)
-                                        return new InputMediaPhoto(new InputMedia(photo.FileId));
-                                    var tgPhoto = new InputMediaPhoto(new InputMedia(albumPhoto.Url));
-                                    tgPhoto.Caption = albumPhoto.Caption;
-                                    return tgPhoto;
-                                }
+                                    Caption = message?.OriginSender?.DisplayName != null
+                                        ? $"[{message.OriginSender.DisplayName}] {albumPhoto.Caption ?? ""}"
+                                        : albumPhoto.Caption
+                                };
+
+                                return tgPhoto;
+                            }
                             case VideoAttachment albumVideo:
+                            {
+                                if (albumVideo.Meta is Video video)
+                                    return new InputMediaPhoto(new InputMedia(video.FileId));
+                                var tgVideo = new InputMediaVideo(albumVideo.Url)
                                 {
-                                    if (albumVideo.Meta is Video video)
-                                        return new InputMediaPhoto(new InputMedia(video.FileId));
-                                    var tgVideo = new InputMediaVideo(albumVideo.Url);
-                                    tgVideo.Caption = albumVideo.Caption;
-                                    tgVideo.Duration = albumVideo.Duration ?? 0;
-                                    tgVideo.Width = albumVideo.Width;
-                                    tgVideo.Height = albumVideo.Height;
-                                    return tgVideo;
-                                }
+                                    Caption = message?.OriginSender?.DisplayName != null
+                                        ? $"[{message.OriginSender.DisplayName}] {albumVideo.Caption ?? ""}"
+                                        : albumVideo.Caption,
+                                    Duration = albumVideo.Duration ?? 0,
+                                    Width = albumVideo.Width,
+                                    Height = albumVideo.Height
+                                };
+
+                                return tgVideo;
+                            }
                             default:
                                 return null;
                         }
@@ -158,9 +161,9 @@ namespace BridgeBotNext.Providers.Tg
                     }
                     else if (at is VoiceAttachment voice)
                     {
-                        var req = (HttpWebRequest)WebRequest.Create(voice.Url);
+                        var req = (HttpWebRequest) WebRequest.Create(voice.Url);
                         req.Timeout = 15000;
-                        var resp = (HttpWebResponse)req.GetResponse();
+                        var resp = (HttpWebResponse) req.GetResponse();
                         await BotClient.SendVoiceAsync(chat,
                             new InputOnlineFile(resp.GetResponseStream(), voice.FileName), voice.Caption);
                     }
@@ -189,9 +192,9 @@ namespace BridgeBotNext.Providers.Tg
                         else
                         {
                             Logger.LogTrace("Converting sticker to webp format");
-                            var req = (HttpWebRequest)WebRequest.Create(inputFile.Url);
+                            var req = (HttpWebRequest) WebRequest.Create(inputFile.Url);
                             req.Timeout = 15000;
-                            var resp = (HttpWebResponse)req.GetResponse();
+                            var resp = (HttpWebResponse) req.GetResponse();
                             var image = SKImage.FromBitmap(SKBitmap.Decode(resp.GetResponseStream()));
                             using (var p = image.Encode(SKEncodedImageFormat.Webp, 100))
                             {
@@ -203,11 +206,11 @@ namespace BridgeBotNext.Providers.Tg
                     else if (at is PlaceAttachment place)
                     {
                         if (place.Name != null && place.Address != null)
-                            await BotClient.SendVenueAsync(chat, (float)place.Latitude, (float)place.Longitude,
+                            await BotClient.SendVenueAsync(chat, (float) place.Latitude, (float) place.Longitude,
                                 place.Name,
                                 place.Address);
                         else
-                            await BotClient.SendLocationAsync(chat, (float)place.Latitude, (float)place.Longitude);
+                            await BotClient.SendLocationAsync(chat, (float) place.Latitude, (float) place.Longitude);
                     }
                     else if (at is FileAttachment file)
                     {
@@ -218,9 +221,9 @@ namespace BridgeBotNext.Providers.Tg
                         }
                         else
                         {
-                            var req = (HttpWebRequest)WebRequest.Create(file.Url);
+                            var req = (HttpWebRequest) WebRequest.Create(file.Url);
                             req.Timeout = 15000;
-                            var resp = (HttpWebResponse)req.GetResponse();
+                            var resp = (HttpWebResponse) req.GetResponse();
                             await BotClient.SendDocumentAsync(chat,
                                 new InputOnlineFile(resp.GetResponseStream(), file.FileName), file.Caption);
                         }
@@ -373,15 +376,15 @@ namespace BridgeBotNext.Providers.Tg
 
             if (tgMessage.Entities != null)
                 attachments.AddRange(from entity in tgMessage.Entities
-                                     where entity.Type == MessageEntityType.TextLink
-                                     select new LinkAttachment(entity.Url));
+                    where entity.Type == MessageEntityType.TextLink
+                    select new LinkAttachment(entity.Url));
 
             // Just forwarded message
             if (tgMessage.ForwardFrom != null)
             {
                 var fwdPerson = _extractPerson(tgMessage.ForwardFrom);
                 var fwdMessage = new Message(conversation, fwdPerson, tgMessage.Text, attachments: attachments);
-                return new Message(conversation, person, forwardedMessages: new[] { fwdMessage });
+                return new Message(conversation, person, forwardedMessages: new[] {fwdMessage});
             }
 
             // Reply to
