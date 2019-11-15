@@ -9,7 +9,7 @@ namespace BridgeBotNext.Attachments
         {
             Title = title;
         }
-        
+
         public string Title { get; }
 
         public override string ToString()
@@ -21,7 +21,7 @@ namespace BridgeBotNext.Attachments
             }
 
             sb.Append(Url);
-            
+
             return sb.ToString();
         }
     }

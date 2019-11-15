@@ -1,10 +1,13 @@
 {
   "Vk": {
     "AccessToken": "abcdef",
-    "GroupId": 123456
+    "GroupId": 170046687
   },
   "Tg": {
-    "BotToken": "123456:abcdef"
+    "BotToken": "1234567:asdadasdasdasd"
   },
-  "database": "bridgebot.db"
+  "Auth": {
+    "Enabled": false,
+    "Password": "Pa$$w0rd"
+  }
 }

@@ -1,0 +1,12 @@
+{
+  "name": "BridgeBotNext instance",
+  "description": "Bridge between different messengers",
+  "repository": "https://github.com/maksimkurb/BridgeBotNext",
+  "logo": "https://raw.githubusercontent.com/maksimkurb/BridgeBotNext/master/static/angry-logo.png",
+  "keywords": [ "c#", "bot", "telegram", "vkontakte", "bridge" ],
+  "buildpacks": [
+    {
+      "url": "https://github.com/jincod/dotnetcore-buildpack#3.0.100"
+    }
+  ]
+}

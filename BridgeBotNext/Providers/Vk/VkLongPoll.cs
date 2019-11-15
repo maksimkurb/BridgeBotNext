@@ -134,7 +134,7 @@ namespace BridgeBotNext.Providers.Vk
                 try
                 {
                     if (_cancellationToken.IsCancellationRequested) break;
-                    var longPollResponse = await ((Task) _vkApi.Groups.GetBotsLongPollHistoryAsync(
+                    var longPollResponse = await _vkApi.Groups.GetBotsLongPollHistoryAsync(
                             new BotsLongPollHistoryParams
                             {
                                 Key = _pollSettings.Key,
@@ -142,7 +142,7 @@ namespace BridgeBotNext.Providers.Vk
                                 Ts = _pollSettings.Ts,
                                 Wait = 25
                             })
-                        .ContinueWith(_checkForErrors)).ConfigureAwait(false);
+                        .ContinueWith(_checkForErrors).ConfigureAwait(false);
                     if (longPollResponse == default(BotsLongPollHistoryResponse))
                         continue;
                     _processEvents(longPollResponse);
