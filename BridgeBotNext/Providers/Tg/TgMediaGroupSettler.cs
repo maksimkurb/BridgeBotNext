@@ -33,7 +33,7 @@ namespace BridgeBotNext.Providers.Tg
 
                 // Add new attachment to it
                 mediaGroup.Attachments.Add(attachment);
-                _mediaGroups.Add(mediaGroupId, mediaGroup);
+                _mediaGroups[mediaGroupId] = mediaGroup;
 
                 // If there is already 10 attachments, then media group is fully received
                 if (mediaGroup.Attachments.Count >= 10)
