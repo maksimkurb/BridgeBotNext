@@ -41,7 +41,13 @@ namespace BridgeBotNext.Entities
         /// <summary>
         ///     Does person has rights to use bot commands
         /// </summary>
-        public bool IsAdmin { get; set; } = false;
+        [NotMapped] public bool IsAdmin
+        {
+            get => this.IsAdminInt != 0;
+            set => this.IsAdminInt = (value ? 1 : 0);
+        }
+
+        [Column("IsAdmin")] public int IsAdminInt { get; set; } = 0;
 
         protected bool Equals(Person other) => PersonId.Equals(other.PersonId);
 
