@@ -15,23 +15,25 @@ namespace BridgeBotNext.Providers.Tg
             lock (_mediaGroups)
             {
                 // Get media group or create it
-                var mediaGroup = _mediaGroups[mediaGroupId] ?? new MediaGroup(message, (sender, args) =>
-                {
-                    // If timer is timed out, then media group is probably fully received
-                    lock (_mediaGroups)
-                    {
-                        MediaGroupReceived?.Invoke(this,
-                            new MediaGroupEventArgs(_mediaGroups[mediaGroupId].Message,
-                                _mediaGroups[mediaGroupId].Attachments.ToArray()));
-
-                        _mediaGroups[mediaGroupId].Dispose();
-                        _mediaGroups.Remove(mediaGroupId);
-                    }
-                });
+                var mediaGroup = _mediaGroups.ContainsKey(mediaGroupId)
+                    ? _mediaGroups[mediaGroupId]
+                    : new MediaGroup(message, (sender, args) =>
+                        {
+                            // If timer is timed out, then media group is probably fully received
+                            lock (_mediaGroups)
+                            {
+                                MediaGroupReceived?.Invoke(this,
+                                    new MediaGroupEventArgs(_mediaGroups[mediaGroupId].Message,
+                                        _mediaGroups[mediaGroupId].Attachments.ToArray()));
+        
+                                _mediaGroups[mediaGroupId].Dispose();
+                                _mediaGroups.Remove(mediaGroupId);
+                            }
+                        });
 
                 // Add new attachment to it
                 mediaGroup.Attachments.Add(attachment);
-                _mediaGroups[mediaGroupId] = mediaGroup;
+                _mediaGroups.Add(mediaGroupId, mediaGroup);
 
                 // If there is already 10 attachments, then media group is fully received
                 if (mediaGroup.Attachments.Count >= 10)
@@ -44,8 +46,6 @@ namespace BridgeBotNext.Providers.Tg
                     _mediaGroups.Remove(mediaGroupId);
                 }
             }
-
-            ;
         }
 
         /**
