@@ -3,8 +3,11 @@
   "description": "Bridge between different messengers",
   "repository": "https://github.com/maksimkurb/BridgeBotNext",
   "logo": "https://raw.githubusercontent.com/maksimkurb/BridgeBotNext/master/static/angry-logo.png",
-  "keywords": [ "c#", "bot", "telegram", "vkontakte", "bridge" ],
+  "keywords": [ "c#", "bot", "telegram", "vkontakte", "tg", "vk", "bridge" ],
   "env": {
+    "HEROKU_APP_NAME": {
+      "required": true
+    },
     "BOT_VK__ACCESSTOKEN": {
       "description": "Access token of VK bot",
       "value": "aabbcc"

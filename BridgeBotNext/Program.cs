@@ -1,19 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
-using BridgeBotNext.Configuration;
 using BridgeBotNext.Entities;
 using BridgeBotNext.Providers;
 using BridgeBotNext.Providers.Tg;
 using BridgeBotNext.Providers.Vk;
 using LiteDB;
 using Microsoft.AspNetCore;
-using Microsoft.Extensions.Configuration;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
 using MixERP.Net.VCards.Extensions;
 
 namespace BridgeBotNext
@@ -22,14 +20,16 @@ namespace BridgeBotNext
     {
         public static string Version => "2.0.0";
 
-        public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
-            WebHost.CreateDefaultBuilder(args)
+        public static IWebHostBuilder CreateWebHostBuilder(string[] args)
+        {
+            return WebHost.CreateDefaultBuilder(args)
                 .UseStartup<Startup>()
                 .UseKestrel(options =>
                 {
-                    options.ListenAnyIP(Int32.Parse(Environment.GetEnvironmentVariable("PORT").Or("8080")));
+                    options.ListenAnyIP(int.Parse(Environment.GetEnvironmentVariable("PORT").Or("8080")));
                 });
-        
+        }
+
         private static void Main(string[] args)
         {
             var serviceCollection = new ServiceCollection();
@@ -107,15 +107,24 @@ namespace BridgeBotNext
 
             logger.LogInformation("Bot is successfully started");
 
-            #region Graceful shutdown
+            #region Run app
+
+            var herokuAppName = Environment.GetEnvironmentVariable("HEROKU_APP");
+            if (!herokuAppName.IsNullOrEmpty())
+            {
+                var herokuWakeUp = new HerokuWakeUp(
+                    serviceProvider.GetService<ILogger<HerokuWakeUp>>(),
+                    new Uri($"http://{herokuAppName}.herokuapp.com"),
+                    new TimeSpan(0, 5, 0),
+                    CancellationToken.None);
+                Task.Run(herokuWakeUp.PeriodicPing);
+            }
 
             if (!Environment.GetEnvironmentVariable("PORT").IsNullOrEmpty())
-            {
                 webHost.Run();
-            } else {
+            else
                 ConsoleHost.WaitForShutdown();
-            }
-            
+
             logger.LogInformation("Graceful shutdown");
             foreach (var provider in providers) orchestrator.RemoveProvider(provider);
 
