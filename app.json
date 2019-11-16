@@ -30,7 +30,7 @@
       "value": "s3cr3t",
       "required": false
     },
-    "DB_PROVIDER": {
+    "BOT_DBPROVIDER": {
       "description": "Database provider. Do not change if do not know what it does. By default uses heroku free-tier postgres database",
       "value": "heroku-postgres",
       "required": true

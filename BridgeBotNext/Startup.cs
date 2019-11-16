@@ -56,16 +56,16 @@ namespace BridgeBotNext
                 // Check Provider and get ConnectionString
                 case "sqlite":
                     services.AddDbContext<BotContext>(options =>
-                        options.UseSqlite(config.GetConnectionString("SQLite")));
+                        options.UseSqlite(config.GetConnectionString("sqlite")));
                     break;
                 case "mysql":
                     services.AddDbContext<BotContext>(options =>
-                        options.UseMySql(config.GetConnectionString("MySQL")));
+                        options.UseMySql(config.GetConnectionString("mysql")));
                     break;
                 // Exception
                 case "postgres":
                     services.AddDbContext<BotContext>(options =>
-                        options.UseNpgsql(config.GetConnectionString("PostgreSQL")));
+                        options.UseNpgsql(config.GetConnectionString("postgres")));
                     break;
                 case "heroku-postgres":
                 {
