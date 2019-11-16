@@ -1,15 +1,12 @@
 using System;
-
+using System.ComponentModel.DataAnnotations.Schema;
 using BridgeBotNext.Providers;
-
-using LiteDB;
 
 namespace BridgeBotNext.Entities
 {
     public abstract class Person
     {
-        [BsonId]
-        public ProviderId ProviderId { get; set; }
+        public ProviderId PersonId { get; set; }
 
         protected Person()
         {
@@ -17,19 +14,19 @@ namespace BridgeBotNext.Entities
 
         protected Person(Provider provider, string id) : this()
         {
-            this.ProviderId = new ProviderId(provider, id);
+            this.PersonId = new ProviderId(provider, id);
         }
         protected Person(Provider provider, string id, string displayName) : this(provider, id)
         {
             this.DisplayName = displayName;
         }
 
-        public Provider Provider => ProviderId.Provider;
+        [NotMapped] public Provider Provider => PersonId.Provider;
 
         /// <summary>
         ///     Person unique id
         /// </summary>
-        public string OriginId => ProviderId.Id;
+        [NotMapped] public string OriginId => PersonId.Id;
 
         /// <summary>
         ///     Person display name
@@ -46,7 +43,7 @@ namespace BridgeBotNext.Entities
         /// </summary>
         public bool IsAdmin { get; set; } = false;
 
-        protected bool Equals(Person other) => ProviderId.Equals(other.ProviderId);
+        protected bool Equals(Person other) => PersonId.Equals(other.PersonId);
 
         public override bool Equals(object obj)
         {
@@ -58,7 +55,7 @@ namespace BridgeBotNext.Entities
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(ProviderId);
+            return HashCode.Combine(PersonId);
         }
     }
 }

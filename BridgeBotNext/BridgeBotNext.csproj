@@ -2,15 +2,19 @@
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
-        <TargetFramework>netcoreapp3.0</TargetFramework>
         <LangVersion>8</LangVersion>
+        <TargetFrameworks>netcoreapp3.0</TargetFrameworks>
     </PropertyGroup>
-
+    
     <ItemGroup>
         <FrameworkReference Include="Microsoft.AspNetCore.App" />
-        <PackageReference Include="LiteDB" Version="4.1.4" />
         <PackageReference Include="LRUCache" Version="0.1.0" />
         <PackageReference Include="Microsoft.AspNetCore.Hosting" Version="2.2.7" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="3.0.0">
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+          <PrivateAssets>all</PrivateAssets>
+        </PackageReference>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="3.0.0" />
         <PackageReference Include="Microsoft.Extensions.Configuration" Version="3.0.0" />
         <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="3.0.0" />
         <PackageReference Include="Microsoft.Extensions.Configuration.FileExtensions" Version="3.0.0" />
@@ -21,6 +25,8 @@
         <PackageReference Include="MimeTypesMap" Version="1.0.8" />
         <PackageReference Include="MixERP.Net.VCards" Version="1.0.7" />
         <PackageReference Include="morelinq" Version="3.2.0" />
+        <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="3.0.1" />
+        <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="2.2.6" />
         <PackageReference Include="SkiaSharp" Version="1.68.0" />
         <PackageReference Include="System.Drawing.Common" Version="4.6.0" />
         <PackageReference Include="Telegram.Bot" Version="15.0.0" />

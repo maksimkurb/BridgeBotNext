@@ -407,6 +407,21 @@ namespace BridgeBotNext.Providers.Tg
 
         private async void _onMessage(object sender, Telegram.Bot.Args.MessageEventArgs e)
         {
+            if (
+                e.Message.Text.StartsWith("/")
+                && !e.Message.Text.Contains(" ")
+                && e.Message.Text.Contains("@")
+            )
+            {
+                var botName = $"@{BotUserName}";
+                if (!e.Message.Text.EndsWith(botName))
+                {
+                    Logger.LogDebug("Message is a command that targets another bot. Skipping it...");
+                    return;
+                }
+                e.Message.Text = e.Message.Text.Substring(0, e.Message.Text.Length - botName.Length);
+            }
+            
             var message = await _extractMessage(e.Message);
 
             if (e.Message.MediaGroupId != null && message.Attachments.Any())

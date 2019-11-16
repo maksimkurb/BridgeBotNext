@@ -4,6 +4,7 @@
   "repository": "https://github.com/maksimkurb/BridgeBotNext",
   "logo": "https://raw.githubusercontent.com/maksimkurb/BridgeBotNext/master/static/angry-logo.png",
   "keywords": [ "c#", "bot", "telegram", "vkontakte", "tg", "vk", "bridge" ],
+  "addons": ["heroku-postgresql:hobby-dev"],
   "env": {
     "HEROKU_APP_NAME": {
       "description": "Application name (as you typed above). It is required to prevent bot from sleep on free dyno"
@@ -28,6 +29,11 @@
       "description": "Bot password, if enabled",
       "value": "s3cr3t",
       "required": false
+    },
+    "DB_PROVIDER": {
+      "description": "Database provider. Do not change if do not know what it does. By default uses heroku free-tier postgres database",
+      "value": "heroku-postgres",
+      "required": true
     }
   },
   "buildpacks": [

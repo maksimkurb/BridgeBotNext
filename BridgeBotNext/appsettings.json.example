@@ -9,5 +9,11 @@
   "Auth": {
     "Enabled": false,
     "Password": "Pa$$w0rd"
+  },
+  "Provider": "SQLite",
+  "ConnectionStrings": {
+    "SQLite": "Data Source=mydatabase.db",
+    "MySQL": "server=localhost;port=3306;database=mydatabase;user=root;password=root",
+    "PostgreSQL": "Host=localhost;Database=mydatabase;Username=root;Password=root"
   }
 }

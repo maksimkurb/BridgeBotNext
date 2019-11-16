@@ -1,15 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
+using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using BridgeBotNext.Entities;
 using BridgeBotNext.Providers;
-using BridgeBotNext.Providers.Tg;
-using BridgeBotNext.Providers.Vk;
-using LiteDB;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MixERP.Net.VCards.Extensions;
@@ -38,14 +35,7 @@ namespace BridgeBotNext
 
             var logger = serviceProvider.GetService<ILogger<Program>>();
 
-            var providers = new List<Provider>();
-
-            #region Registering providers
-
-            providers.Add(serviceProvider.GetService<TgProvider>());
-            providers.Add(serviceProvider.GetService<VkProvider>());
-
-            #endregion
+            var providers = serviceProvider.GetServices<Provider>().ToList();
 
             if (!providers.Any())
             {
@@ -58,6 +48,9 @@ namespace BridgeBotNext
             logger.LogInformation("Running bot with providers: {0}",
                 string.Join(", ", providers.Select(prov => prov.Name)));
 
+            var dbContext = serviceProvider.GetService<BotContext>();
+            dbContext.Database.Migrate();
+            
             #region Connect to providers
 
             var connectionTask = Task.WhenAll(providers.Select(prov => prov.Connect()));
@@ -78,28 +71,6 @@ namespace BridgeBotNext
 
             logger.LogTrace("Bot is successfully connected to all providers");
 
-            BsonMapper.Global.RegisterType(
-                provider => new BsonValue(provider.Name),
-                providerName =>
-                {
-                    foreach (var provider in providers)
-                        if (provider.Name == providerName.AsString)
-                            return provider;
-
-                    return null;
-                });
-            BsonMapper.Global.RegisterType(
-                conversationId => new BsonValue(conversationId.ToString()),
-                value =>
-                {
-                    var parts = value.AsString.Split(':', 2);
-                    if (parts.Length != 2) return null;
-                    foreach (var provider in providers)
-                        if (provider.Name == parts[0])
-                            return new ProviderId(provider, parts[1]);
-
-                    return null;
-                });
 
             var orchestrator = serviceProvider.GetService<BotOrchestrator>();
 

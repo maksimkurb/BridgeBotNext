@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using BridgeBotNext.Configuration;
 using BridgeBotNext.Entities;
 using BridgeBotNext.Providers;
-using LiteDB;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -18,21 +18,16 @@ namespace BridgeBotNext
         private static readonly string BotPrefix = "🔹 ";
         private static readonly string CurrentChatPrefix = "📍";
         private readonly IOptions<AuthConfiguration> _authConfiguration;
-        private readonly LiteCollection<Connection> _connections;
-        private readonly LiteCollection<Conversation> _conversations;
         private readonly ILogger<BotOrchestrator> _logger;
-        private readonly LiteCollection<Person> _persons;
         private readonly List<Provider> _providers = new List<Provider>();
-        private LiteDatabase _db;
 
-        public BotOrchestrator(ILogger<BotOrchestrator> logger, LiteDatabase db,
+        private readonly BotContext _db;
+
+        public BotOrchestrator(ILogger<BotOrchestrator> logger, BotContext db,
             IOptions<AuthConfiguration> authConfiguration)
         {
             _logger = logger;
             _db = db;
-            _connections = db.GetCollection<Connection>("connections");
-            _conversations = db.GetCollection<Conversation>("conversations");
-            _persons = db.GetCollection<Person>("persons");
             _authConfiguration = authConfiguration;
 
             if (_authConfiguration.Value == null ||
@@ -110,15 +105,17 @@ namespace BridgeBotNext
 
         private Conversation _findOrInsertConversation(Conversation conversation)
         {
-            var dbConversation = _conversations.FindOne(x => x.ProviderId.Equals(conversation.ProviderId));
+            var dbConversation = _db.Conversations.Find(conversation.ConversationId);
             if (dbConversation == null)
             {
                 dbConversation = conversation;
-                _conversations.Insert(dbConversation);
+                _db.Conversations.Add(dbConversation);
+                _db.SaveChanges();
             }
             else if (dbConversation.Title != conversation.Title)
             {
-                _conversations.Update(conversation);
+                _db.Conversations.Update(conversation);
+                _db.SaveChanges();
             }
 
             return dbConversation;
@@ -126,7 +123,7 @@ namespace BridgeBotNext
 
         private Person _findPerson(ProviderId providerId)
         {
-            return _persons.FindOne(x => x.ProviderId.Equals(providerId));
+            return _db.Persons.Find(providerId);
         }
 
         private async Task<bool> _ensureHasAdminRights(Provider.MessageEventArgs e)
@@ -138,7 +135,7 @@ namespace BridgeBotNext
                 return true;
             }
 
-            var person = _findPerson(e.Message.OriginSender.ProviderId);
+            var person = _findPerson(e.Message.OriginSender.PersonId);
             if (person != null && person.IsAdmin)
             {
                 return true;
@@ -182,11 +179,11 @@ namespace BridgeBotNext
 
             try
             {
-                var connectionId = new ObjectId(args);
-                var connection = _connections
-                    .Include("$.LeftConversation")
-                    .Include("$.RightConversation")
-                    .FindById(connectionId);
+                var connectionId = long.Parse(args);
+                var connection = _db.Connections
+                    .Include(c => c.LeftConversation)
+                    .Include(c => c.RightConversation)
+                    .SingleOrDefault(c => c.ConnectionId == connectionId);
                 if (connection == null) throw new ArgumentException("Connection does not exists");
 
                 if (!connection.LeftConversation.Equals(conversation) &&
@@ -196,13 +193,15 @@ namespace BridgeBotNext
                     ? connection.RightConversation
                     : connection.LeftConversation;
 
-                _connections.Delete(connectionId);
+                _db.Connections.Remove(connection);
+                await _db.SaveChangesAsync();
+                
                 await Task.WhenAll(
                     conversation.SendMessage($"{BotPrefix}Чат {otherConversation} отключён"),
                     otherConversation.SendMessage($"{BotPrefix} Чат {conversation} отключён")
                 );
             }
-            catch (ArgumentException)
+            catch (Exception ex) when (ex is ArgumentException || ex is FormatException)
             {
                 await conversation.SendMessage($"{BotPrefix}Сопряжение с таким ID не найдено");
             }
@@ -212,11 +211,11 @@ namespace BridgeBotNext
         {
             var conversation = _findOrInsertConversation(e.Message.OriginConversation);
 
-            var connections = _connections
-                .Include("$.LeftConversation")
-                .Include("$.RightConversation")
-                .FindAll()
-                .Where(x => x.LeftConversation.Equals(conversation) || x.RightConversation.Equals(conversation));
+            var connections = _db.Connections
+                .Include(x => x.LeftConversation)
+                .Include(x => x.RightConversation)
+                .Where(x => x.LeftConversation.Equals(conversation) || x.RightConversation.Equals(conversation))
+                .ToList();
 
             if (!connections.Any())
             {
@@ -261,7 +260,8 @@ namespace BridgeBotNext
             var connection = new Connection();
             connection.LeftConversation = conversation;
             connection.Token = Utils.GenerateCryptoRandomString(20);
-            _connections.Insert(connection);
+            _db.Connections.Add(connection);
+            await _db.SaveChangesAsync();
 
             await conversation.SendMessage(
                 $"{BotPrefix}Команда для сопряжения чатов:\n/connect $mbb2${connection.Token}\n\nВведите эту команду в другом чате, чтобы подключить его к данному чату");
@@ -276,9 +276,9 @@ namespace BridgeBotNext
                 return;
             }
 
-            if (args == _authConfiguration.Value.Password)
+            if (args.Equals(_authConfiguration.Value.Password))
             {
-                var person = _findPerson(e.Message.OriginSender.ProviderId);
+                var person = _findPerson(e.Message.OriginSender.PersonId);
                 if (person != null && person.IsAdmin)
                 {
                     await conversation.SendMessage($"{BotPrefix}Пользователь уже является администратором");
@@ -287,7 +287,9 @@ namespace BridgeBotNext
 
                 person = e.Message.OriginSender;
                 person.IsAdmin = true;
-                _persons.Insert(person);
+                _db.Persons.Add(person);
+                await _db.SaveChangesAsync();
+                
                 await conversation.SendMessage(
                     $"{BotPrefix}Пользователь {person.DisplayName} [{person.ProfileUrl}] теперь администратор");
             }
@@ -307,12 +309,13 @@ namespace BridgeBotNext
             }
 
             var providerId = string.IsNullOrEmpty(args)
-                ? e.Message.OriginSender.ProviderId
+                ? e.Message.OriginSender.PersonId
                 : new ProviderId(e.Message.OriginSender.Provider, args);
             var personToDemote = _findPerson(providerId);
             if (personToDemote != null)
             {
-                _persons.Delete(p => p.ProviderId.Equals(providerId));
+                _db.Persons.Remove(personToDemote);
+                await _db.SaveChangesAsync();
                 await conversation.SendMessage(
                     $"{BotPrefix}Пользователь {personToDemote.DisplayName} [{e.Message.OriginSender.ProfileUrl}] больше не администратор");
             }
@@ -336,18 +339,17 @@ namespace BridgeBotNext
             var token = args.Trim();
             if (!token.StartsWith("$mbb2$"))
             {
-                await conversation.SendMessage($"{BotPrefix}Ключ подключения не валидный");
+                await conversation.SendMessage($"{BotPrefix}Ключ подключения не валидный (возможно в нём опечатка?)");
                 return;
             }
 
             token = token.Substring(6);
 
-            var connection = _connections
-                .Include(x => x.LeftConversation)
-                .FindOne(x => x.Token == token);
+            var connection = _db.Connections.First(x => x.Token == token);
+            
             if (connection == null)
             {
-                await conversation.SendMessage($"{BotPrefix}Ключ подключения не валидный");
+                await conversation.SendMessage($"{BotPrefix}Ключ подключения не не существует");
                 return;
             }
 
@@ -364,10 +366,10 @@ namespace BridgeBotNext
                 return;
             }
 
-            var otherConnections = _connections.Find(x =>
+            var otherConnections = _db.Connections.Where(x =>
                 x.LeftConversation.Equals(connection.LeftConversation) && x.RightConversation.Equals(conversation) ||
                 x.LeftConversation.Equals(conversation) && x.RightConversation.Equals(connection.LeftConversation)
-            );
+            ).ToList();
 
             if (otherConnections.Any())
             {
@@ -390,7 +392,8 @@ namespace BridgeBotNext
 
 
             connection.RightConversation = conversation;
-            _connections.Update(connection);
+            _db.Connections.Update(connection);
+            await _db.SaveChangesAsync();
 
             await conversation.SendMessage(
                 $"{BotPrefix}Этот чат сопряжён с {connection.LeftConversation}\n/list - список всех сопряжений");
@@ -404,11 +407,10 @@ namespace BridgeBotNext
             _logger.LogTrace(
                 $"Message received from {provider.DisplayName}, conversationId: {conversation.OriginId}");
 
-            var connections = _connections
-                .Include(x => x.LeftConversation)
-                .Include(x => x.RightConversation)
-                .Find(x => x.LeftConversation.ProviderId == conversation.ProviderId ||
-                           x.RightConversation.ProviderId == conversation.ProviderId);
+            var connections = _db.Connections
+                .Where(x => Equals(x.LeftConversation.ConversationId, conversation.ConversationId) ||
+                           Equals(x.RightConversation.ConversationId, conversation.ConversationId))
+                .ToList();
 
             Task.WhenAll(connections.Select(connection =>
             {

@@ -1,8 +1,7 @@
 using System;
-using BridgeBotNext.Entities;
-using LiteDB;
+using Microsoft.EntityFrameworkCore;
 
-namespace BridgeBotNext
+namespace BridgeBotNext.Entities
 {
     public enum ConnectionDirection
     {
@@ -14,11 +13,11 @@ namespace BridgeBotNext
 
     public class Connection
     {
-        [BsonId] public ObjectId ConnectionId { get; set; }
+        public long ConnectionId { get; set; }
 
-        [BsonRef("conversations")] public Conversation LeftConversation { get; set; }
+        public Conversation LeftConversation { get; set; }
 
-        [BsonRef("conversations")] public Conversation RightConversation { get; set; }
+        public Conversation RightConversation { get; set; }
 
         public ConnectionDirection Direction { get; set; }
 

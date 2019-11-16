@@ -1,9 +1,8 @@
 using System;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Threading.Tasks;
 
 using BridgeBotNext.Providers;
-
-using LiteDB;
 
 namespace BridgeBotNext.Entities
 {
@@ -13,7 +12,7 @@ namespace BridgeBotNext.Entities
         public Conversation() { }
         public Conversation(Provider provider, string id) : this()
         {
-            ProviderId = new ProviderId(provider, id);
+            ConversationId = new ProviderId(provider, id);
         }
         public Conversation(Provider provider, string id, string title) : this(provider, id)
         {
@@ -24,17 +23,17 @@ namespace BridgeBotNext.Entities
         /// <summary>
         /// Composite key: provider + conversationId
         /// </summary>
-        [BsonId] public ProviderId ProviderId { get; set; }
+        public ProviderId ConversationId { get; set; }
 
         /// <summary>
         /// Original provider
         /// </summary>
-        [BsonIgnore] public Provider Provider => ProviderId.Provider;
+        [NotMapped] public Provider Provider => ConversationId.Provider;
 
         /// <summary>
         /// Original conversation ID
         /// </summary>
-        [BsonIgnore] public string OriginId => ProviderId.Id;
+        [NotMapped] public string OriginId => ConversationId.Id;
 
         public string Title { get; set; }
 
@@ -49,7 +48,7 @@ namespace BridgeBotNext.Entities
             return $"[{Provider.DisplayName}] {Title}";
         }
 
-        protected bool Equals(Conversation other) => ProviderId.Equals(other.ProviderId);
+        protected bool Equals(Conversation other) => ConversationId.Equals(other.ConversationId);
         public override bool Equals(object obj)
         {
             if (ReferenceEquals(null, obj)) return false;
@@ -61,7 +60,7 @@ namespace BridgeBotNext.Entities
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(ProviderId);
+            return HashCode.Combine(ConversationId);
         }
     }
 }
