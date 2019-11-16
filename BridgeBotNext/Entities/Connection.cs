@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 
 namespace BridgeBotNext.Entities
@@ -13,6 +14,7 @@ namespace BridgeBotNext.Entities
 
     public class Connection
     {
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public long ConnectionId { get; set; }
 
         public Conversation LeftConversation { get; set; }
