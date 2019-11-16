@@ -26,6 +26,9 @@ namespace BridgeBotNext.Entities
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            modelBuilder
+                .UseIdentityColumns();
             
             var providerConverter = new ValueConverter<Provider, string>(
                 v => v.ToString(),
