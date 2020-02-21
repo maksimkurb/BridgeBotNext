@@ -14,7 +14,7 @@ namespace BridgeBotNext.Attachments
             string defaultMimeType = "audio/mpeg",
             string title = null,
             string performer = null,
-            int? duration = null
+            ulong? duration = null
         ) : base(url, meta, caption, fileName, fileSize, duration, mimeType, defaultMimeType)
         {
             Title = title;

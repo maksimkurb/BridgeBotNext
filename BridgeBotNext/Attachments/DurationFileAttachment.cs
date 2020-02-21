@@ -6,13 +6,13 @@ namespace BridgeBotNext.Attachments
     public class DurationFileAttachment : FileAttachment
     {
         public DurationFileAttachment(string url, object meta = null, string caption = null, string fileName = null,
-            long? fileSize = null, int? duration = null, string mimeType = null, string defaultMimeType = null) :
+            long? fileSize = null, ulong? duration = null, string mimeType = null, string defaultMimeType = null) :
             base(url, meta, caption, fileName, fileSize, mimeType, defaultMimeType)
         {
             Duration = duration;
         }
 
-        public int? Duration { get; }
+        public ulong? Duration { get; }
 
         protected string ReadableDuration()
         {

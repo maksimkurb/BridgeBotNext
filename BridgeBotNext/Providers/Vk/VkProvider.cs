@@ -131,6 +131,12 @@ namespace BridgeBotNext.Providers.Vk
                             $"https://vk.com/audio?q={HttpUtility.UrlEncode(audioName)}", audio, $"🎵{audioName}"));
                         break;
                     }
+                    case AudioMessage audioMessage:
+                    {
+                        attachments.Add(new VoiceAttachment(audioMessage.LinkOgg.ToString(), audioMessage,
+                            fileName: null, duration: audioMessage.Duration));
+                        break;
+                    }
                     case Document doc when doc.Type == DocumentTypeEnum.Gif:
                         attachments.Add(new AnimationAttachment(doc.Uri, doc, doc.Title, fileSize: doc.Size ?? 0));
                         break;

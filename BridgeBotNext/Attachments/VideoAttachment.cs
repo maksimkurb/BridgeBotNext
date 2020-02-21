@@ -10,7 +10,7 @@ namespace BridgeBotNext.Attachments
             long fileSize = 0,
             string mimeType = null,
             string title = null,
-            int duration = 0,
+            ulong duration = 0,
             int width = 0,
             int height = 0
         ) : base(url, meta, caption, fileName, fileSize, duration, mimeType, "video/mp4")

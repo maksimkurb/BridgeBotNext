@@ -129,7 +129,7 @@ namespace BridgeBotNext.Providers.Tg
                                     Caption = message?.OriginSender?.DisplayName != null
                                         ? $"[{message.OriginSender.DisplayName}] {albumVideo.Caption ?? ""}"
                                         : albumVideo.Caption,
-                                    Duration = albumVideo.Duration ?? 0,
+                                    Duration = (int) (albumVideo.Duration ?? 0),
                                     Width = albumVideo.Width,
                                     Height = albumVideo.Height
                                 };
@@ -155,7 +155,7 @@ namespace BridgeBotNext.Providers.Tg
                     if (at is AnimationAttachment animation)
                     {
                         await BotClient.SendAnimationAsync(chat, _getInputFile(message, animation),
-                            animation.Duration ?? 0,
+                            (int) (animation.Duration ?? 0),
                             animation.Width,
                             animation.Height, caption: animation.Caption);
                     }
@@ -170,7 +170,7 @@ namespace BridgeBotNext.Providers.Tg
                     else if (at is AudioAttachment audio)
                     {
                         await BotClient.SendAudioAsync(chat, _getInputFile(message, audio), audio.Caption,
-                            duration: audio.Duration ?? 0,
+                            duration: (int) (audio.Duration ?? 0),
                             performer: audio.Performer, title: audio.Title);
                     }
                     else if (at is ContactAttachment contact)
@@ -283,7 +283,7 @@ namespace BridgeBotNext.Providers.Tg
                     fileSize: file.FileSize,
                     mimeType: tgMessage.Audio.MimeType, title: tgMessage.Audio.Title,
                     performer: tgMessage.Audio.Performer,
-                    duration: tgMessage.Audio.Duration);
+                    duration: Convert.ToUInt64(tgMessage.Audio.Duration));
             }
 
             if (tgMessage.Document != null)
@@ -298,7 +298,7 @@ namespace BridgeBotNext.Providers.Tg
                 var file = await BotClient.GetFileAsync(tgMessage.Animation.FileId);
                 return new AnimationAttachment(_getDownloadUrl(file), tgMessage.Animation, tgMessage.Caption,
                     tgMessage.Animation.FileName, file.FileSize, tgMessage.Animation.MimeType,
-                    tgMessage.Animation.Duration,
+                    Convert.ToUInt64(tgMessage.Animation.Duration),
                     tgMessage.Animation.Width, tgMessage.Animation.Height);
             }
 
@@ -324,7 +324,7 @@ namespace BridgeBotNext.Providers.Tg
                 var file = await BotClient.GetFileAsync(tgMessage.Video.FileId);
                 return new VideoAttachment(_getDownloadUrl(file), tgMessage.Video, tgMessage.Caption,
                     fileSize: file.FileSize,
-                    mimeType: tgMessage.Video.MimeType, duration: tgMessage.Video.Duration,
+                    mimeType: tgMessage.Video.MimeType, duration: Convert.ToUInt64(tgMessage.Video.Duration),
                     width: tgMessage.Video.Width,
                     height: tgMessage.Video.Height);
             }
@@ -334,7 +334,7 @@ namespace BridgeBotNext.Providers.Tg
                 var file = await BotClient.GetFileAsync(tgMessage.Voice.FileId);
                 return new VoiceAttachment(_getDownloadUrl(file), tgMessage.Voice, tgMessage.Caption,
                     fileSize: file.FileSize,
-                    mimeType: tgMessage.Voice.MimeType, duration: tgMessage.Voice.Duration);
+                    mimeType: tgMessage.Voice.MimeType, duration: Convert.ToUInt64(tgMessage.Voice.Duration));
             }
 
             if (tgMessage.VideoNote != null)
@@ -343,7 +343,8 @@ namespace BridgeBotNext.Providers.Tg
                 var file = await BotClient.GetFileAsync(tgMessage.VideoNote.FileId);
                 return new VideoAttachment(_getDownloadUrl(file), tgMessage.VideoNote, tgMessage.Caption,
                     fileSize: file.FileSize,
-                    mimeType: "video/mp4", duration: tgMessage.VideoNote.Duration, width: tgMessage.VideoNote.Length,
+                    mimeType: "video/mp4", duration: Convert.ToUInt64(tgMessage.VideoNote.Duration),
+                    width: tgMessage.VideoNote.Length,
                     height: tgMessage.VideoNote.Length);
             }
 
@@ -411,7 +412,7 @@ namespace BridgeBotNext.Providers.Tg
             {
                 return;
             }
-            
+
             if (
                 e.Message.Text != null
                 && e.Message.Text.StartsWith("/")
@@ -425,9 +426,10 @@ namespace BridgeBotNext.Providers.Tg
                     Logger.LogDebug("Message is a command that targets another bot. Skipping it...");
                     return;
                 }
+
                 e.Message.Text = e.Message.Text.Substring(0, e.Message.Text.Length - botName.Length);
             }
-            
+
             var message = await _extractMessage(e.Message);
 
             if (e.Message.MediaGroupId != null && message.Attachments.Any())
