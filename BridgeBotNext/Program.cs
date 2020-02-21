@@ -80,7 +80,7 @@ namespace BridgeBotNext
 
             #region Run app
 
-            var herokuAppName = Environment.GetEnvironmentVariable("HEROKU_APP");
+            var herokuAppName = Environment.GetEnvironmentVariable("HEROKU_APP_NAME");
             if (!herokuAppName.IsNullOrEmpty())
             {
                 logger.LogInformation("Heroku self-ping enabled. URL: http://{}.herokuapp.com", herokuAppName);
