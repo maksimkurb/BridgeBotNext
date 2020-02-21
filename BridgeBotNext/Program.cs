@@ -48,7 +48,7 @@ namespace BridgeBotNext
             logger.LogInformation("Running bot with providers: {0}",
                 string.Join(", ", providers.Select(prov => prov.Name)));
 
-            var dbContext = serviceProvider.GetService<BotContext>();
+            var dbContext = serviceProvider.GetService<BotDbContext>();
             dbContext.Database.Migrate();
             
             #region Connect to providers
@@ -83,6 +83,7 @@ namespace BridgeBotNext
             var herokuAppName = Environment.GetEnvironmentVariable("HEROKU_APP");
             if (!herokuAppName.IsNullOrEmpty())
             {
+                logger.LogInformation("Heroku self-ping enabled. URL: http://{}.herokuapp.com", herokuAppName);
                 var herokuWakeUp = new HerokuWakeUp(
                     serviceProvider.GetService<ILogger<HerokuWakeUp>>(),
                     new Uri($"http://{herokuAppName}.herokuapp.com"),

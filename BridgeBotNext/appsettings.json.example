@@ -10,10 +10,9 @@
     "Enabled": false,
     "Password": "Pa$$w0rd"
   },
-  "DbProvider": "sqlite",
+  "DbProvider": "postgres",
   "ConnectionStrings": {
     "sqlite": "Data Source=mydatabase.db",
-    "mysql": "server=localhost;port=3306;database=mydatabase;user=root;password=root",
     "postgres": "Host=localhost;Database=mydatabase;Username=root;Password=root"
   }
 }

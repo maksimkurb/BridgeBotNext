@@ -21,9 +21,9 @@ namespace BridgeBotNext
         private readonly ILogger<BotOrchestrator> _logger;
         private readonly List<Provider> _providers = new List<Provider>();
 
-        private readonly BotContext _db;
+        private readonly BotDbContext _db;
 
-        public BotOrchestrator(ILogger<BotOrchestrator> logger, BotContext db,
+        public BotOrchestrator(ILogger<BotOrchestrator> logger, BotDbContext db,
             IOptions<AuthConfiguration> authConfiguration)
         {
             _logger = logger;

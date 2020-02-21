@@ -1,5 +1,6 @@
 ﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 namespace BridgeBotNext.Migrations
 {
@@ -25,7 +26,7 @@ namespace BridgeBotNext.Migrations
                 {
                     PersonId = table.Column<string>(nullable: false),
                     DisplayName = table.Column<string>(nullable: true),
-                    IsAdmin = table.Column<bool>(nullable: false),
+                    IsAdmin = table.Column<int>(nullable: false),
                     Discriminator = table.Column<string>(nullable: false),
                     Username = table.Column<string>(nullable: true)
                 },
@@ -39,7 +40,7 @@ namespace BridgeBotNext.Migrations
                 columns: table => new
                 {
                     ConnectionId = table.Column<long>(nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     LeftConversationConversationId = table.Column<string>(nullable: true),
                     RightConversationConversationId = table.Column<string>(nullable: true),
                     Direction = table.Column<int>(nullable: false),

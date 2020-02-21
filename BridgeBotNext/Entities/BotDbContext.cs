@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace BridgeBotNext.Entities
 {
-    public class BotContext: DbContext
+    public class BotDbContext: DbContext
     {
         public DbSet<Connection> Connections { get; set; }
         public DbSet<Conversation> Conversations { get; set; }
@@ -17,7 +17,7 @@ namespace BridgeBotNext.Entities
 
         private readonly IEnumerable<Provider> _providers;
 
-        public BotContext(DbContextOptions<BotContext> options, IEnumerable<Provider> providers)
+        public BotDbContext(DbContextOptions<BotDbContext> options, IEnumerable<Provider> providers)
             : base(options)
         {
             _providers = providers;

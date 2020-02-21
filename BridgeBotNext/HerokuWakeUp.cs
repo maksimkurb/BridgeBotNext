@@ -27,7 +27,7 @@ namespace BridgeBotNext
 
         private void Ping()
         {
-            _logger.LogDebug("Pinging self");
+            _logger.LogInformation("Calling uri {}", _uri);
             var webClient = new WebClient();
             webClient.DownloadData(_uri);
         }

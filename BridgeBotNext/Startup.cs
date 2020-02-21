@@ -55,16 +55,11 @@ namespace BridgeBotNext
             {
                 // Check Provider and get ConnectionString
                 case "sqlite":
-                    services.AddDbContext<BotContext>(options =>
+                    services.AddDbContext<BotDbContext>(options =>
                         options.UseSqlite(config.GetConnectionString("sqlite")));
                     break;
-                case "mysql":
-                    services.AddDbContext<BotContext>(options =>
-                        options.UseMySql(config.GetConnectionString("mysql")));
-                    break;
-                // Exception
                 case "postgres":
-                    services.AddDbContext<BotContext>(options =>
+                    services.AddDbContext<BotDbContext>(options =>
                         options.UseNpgsql(config.GetConnectionString("postgres")));
                     break;
                 case "heroku-postgres":
@@ -80,7 +75,7 @@ namespace BridgeBotNext
                     var pgHost = pgHostPort.Split(":")[0];
                     var pgPort = pgHostPort.Split(":")[1];
                     var connStr = $"Server={pgHost};Port={pgPort};User Id={pgUser};Password={pgPass};Database={pgDb}";
-                    services.AddDbContext<BotContext>(options => 
+                    services.AddDbContext<BotDbContext>(options => 
                         options.UseNpgsql(connStr)
                     );
                     break;
