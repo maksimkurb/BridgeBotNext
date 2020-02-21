@@ -407,8 +407,14 @@ namespace BridgeBotNext.Providers.Tg
 
         private async void _onMessage(object sender, Telegram.Bot.Args.MessageEventArgs e)
         {
+            if (e.Message == null)
+            {
+                return;
+            }
+            
             if (
-                e.Message.Text.StartsWith("/")
+                e.Message.Text != null
+                && e.Message.Text.StartsWith("/")
                 && !e.Message.Text.Contains(" ")
                 && e.Message.Text.Contains("@")
             )
