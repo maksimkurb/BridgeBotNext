@@ -310,7 +310,7 @@ namespace BridgeBotNext.Providers.Vk
             try
             {
                 var file = await _uploadFile(at, server, overrideFileName, overrideMimeType);
-                var document = await ApiClient.Docs.SaveAsync(file, at.FileName);
+                var document = await ApiClient.Docs.SaveAsync(file, at.FileName, null);
                 return document[0].Instance;
             }
             catch (Exception e)
