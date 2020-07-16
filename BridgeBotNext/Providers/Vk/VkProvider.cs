@@ -348,9 +348,9 @@ namespace BridgeBotNext.Providers.Vk
 
             #region Send message
 
-            var sender = "[unknown sender]";
+            var sender = "";
             if (message.OriginSender != null)
-                sender = FormatSender(message.OriginSender);
+                sender = FormatSender(message.OriginSender) + "\n";
 
             var body = FormatMessageBody(message, fwd);
             if (body.Length > 0)
@@ -358,7 +358,7 @@ namespace BridgeBotNext.Providers.Vk
                 {
                     GroupId = _groupId,
                     PeerId = peerId,
-                    Message = $"{sender}\n{body}",
+                    Message = $"{sender}{body}",
                     RandomId = random.Next()
                 });
 
@@ -443,7 +443,7 @@ namespace BridgeBotNext.Providers.Vk
                             PeerId = peerId,
                             Attachments = vkAttachments.Where(a => a != null),
                             RandomId = random.Next(),
-                            Message = $"{sender}\n{string.Join(" ", vkAttachments.Where(a => a == null).Select(a => "[Unsupported attachment]").ToArray())}" 
+                            Message = $"{sender}{string.Join(" ", vkAttachments.Where(a => a == null).Select(a => "[Unsupported attachment]").ToArray())}" 
                         });
                     }
 
@@ -460,7 +460,7 @@ namespace BridgeBotNext.Providers.Vk
                                     GroupId = _groupId,
                                     PeerId = peerId,
                                     Attachments = new[] {await _uploadDocument(contact, docsUploadServer)},
-                                    Message = $"{sender}\n{contact}",
+                                    Message = $"{sender}{contact}",
                                     RandomId = random.Next()
                                 });
                                 break;
@@ -469,7 +469,7 @@ namespace BridgeBotNext.Providers.Vk
                                 {
                                     GroupId = _groupId,
                                     PeerId = peerId,
-                                    Message = $"{sender}\n{link}",
+                                    Message = $"{sender}{link}",
                                     RandomId = random.Next()
                                 });
                                 break;
@@ -480,7 +480,7 @@ namespace BridgeBotNext.Providers.Vk
                                     PeerId = peerId,
                                     Lat = place.Latitude,
                                     Longitude = place.Longitude, // typo in lib
-                                    Message = $"{sender}\n{place}",
+                                    Message = $"{sender}{place}",
                                     RandomId = random.Next()
                                 });
                                 break;
