@@ -30,6 +30,7 @@ namespace BridgeBotNextTest.Telegram
             IConfiguration config = new ConfigurationBuilder()
                 .AddJsonFile("appsettings.json", true, false)
                 .AddEnvironmentVariables("BOT_")
+                .AddUserSecrets(Constants.UserSecretsId)
                 .Build();
 
             services

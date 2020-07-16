@@ -408,6 +408,8 @@ namespace BridgeBotNext
                 $"Message received from {provider.DisplayName}, conversationId: {conversation.OriginId}");
 
             var connections = _db.Connections
+                .Include(x => x.LeftConversation)
+                .Include(x => x.RightConversation)
                 .Where(x => Equals(x.LeftConversation.ConversationId, conversation.ConversationId) ||
                            Equals(x.RightConversation.ConversationId, conversation.ConversationId))
                 .ToList();

@@ -106,8 +106,6 @@ namespace BridgeBotNext.Providers
         {
             var body = new StringBuilder();
 
-            if (message.OriginSender != null) body.AppendLine(FormatSender(message.OriginSender));
-
             if (!forwardedMessages.IsNullOrEmpty()) body.AppendLine(FormatForwardedMessages(forwardedMessages));
 
             if (!string.IsNullOrEmpty(message.Body)) body.AppendLine(SanitizeMessageBody(message.Body));

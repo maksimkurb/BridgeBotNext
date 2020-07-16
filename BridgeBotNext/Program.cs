@@ -7,7 +7,9 @@ using BridgeBotNext.Providers;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using MixERP.Net.VCards.Extensions;
 
@@ -21,6 +23,17 @@ namespace BridgeBotNext
         {
             return WebHost.CreateDefaultBuilder(args)
                 .UseStartup<Startup>()
+                .ConfigureAppConfiguration((hostContext, builder) =>
+                {
+                    builder
+                        .AddJsonFile("appsettings.json", true, false)
+                        .AddEnvironmentVariables("BOT_");
+
+                    if (hostContext.HostingEnvironment.IsDevelopment())
+                    {
+                        builder.AddUserSecrets<Program>();
+                    }
+                })
                 .UseKestrel(options =>
                 {
                     options.ListenAnyIP(int.Parse(Environment.GetEnvironmentVariable("PORT").Or("8080")));
@@ -40,7 +53,7 @@ namespace BridgeBotNext
             if (!providers.Any())
             {
                 logger.LogError("No providers enabled. Please provide bot tokens, if you wish enable bot provider");
-                logger.LogError("Use env variables: TELEGRAM_BOT_TOKEN");
+                logger.LogError("Use env variables: BOT_TG_BOTTOKEN, BOT_VK_ACCESSTOKEN, BOT_VK_GROUPID");
 
                 Environment.Exit(1);
             }
@@ -79,18 +92,6 @@ namespace BridgeBotNext
             logger.LogInformation("Bot is successfully started");
 
             #region Run app
-
-            var herokuAppName = Environment.GetEnvironmentVariable("HEROKU_APP_NAME");
-            if (!herokuAppName.IsNullOrEmpty())
-            {
-                logger.LogInformation("Heroku self-ping enabled. URL: http://{}.herokuapp.com", herokuAppName);
-                var herokuWakeUp = new HerokuWakeUp(
-                    serviceProvider.GetService<ILogger<HerokuWakeUp>>(),
-                    new Uri($"http://{herokuAppName}.herokuapp.com"),
-                    new TimeSpan(0, 5, 0),
-                    CancellationToken.None);
-                Task.Run(herokuWakeUp.PeriodicPing);
-            }
 
             if (!Environment.GetEnvironmentVariable("PORT").IsNullOrEmpty())
                 webHost.Run();

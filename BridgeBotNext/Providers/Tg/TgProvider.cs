@@ -86,10 +86,13 @@ namespace BridgeBotNext.Providers.Tg
             #endregion
 
             #region Send message
+            var sender = "[unknown sender]";
+            if (message.OriginSender != null)
+                sender = FormatSender(message.OriginSender);
 
             var body = FormatMessageBody(message, fwd);
             if (body.Length > 0)
-                await BotClient.SendTextMessageAsync(new ChatId(conversation.OriginId), body, ParseMode.Html, true);
+                await BotClient.SendTextMessageAsync(new ChatId(conversation.OriginId), $"{sender}\n{body}", ParseMode.Html, true);
 
             #endregion
 
@@ -180,7 +183,7 @@ namespace BridgeBotNext.Providers.Tg
                     }
                     else if (at is LinkAttachment link)
                     {
-                        await BotClient.SendTextMessageAsync(chat, link.Url);
+                        await BotClient.SendTextMessageAsync(chat, $"{sender}\n{link.Url}", ParseMode.Html);
                     }
                     else if (at is StickerAttachment sticker)
                     {

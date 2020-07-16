@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Xunit;
 
-namespace BridgeBotNextTest.Telegram
+namespace BridgeBotNextTest.Vkontakte
 {
     public class VkProviderTestingPlatformFixture : IDisposable
     {
@@ -31,6 +31,7 @@ namespace BridgeBotNextTest.Telegram
             IConfiguration config = new ConfigurationBuilder()
                 .AddJsonFile("appsettings.json", true, false)
                 .AddEnvironmentVariables("BOT_")
+                .AddUserSecrets(Constants.UserSecretsId)
                 .Build();
 
             services

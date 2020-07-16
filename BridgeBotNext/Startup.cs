@@ -16,6 +16,13 @@ namespace BridgeBotNext
 {
     public class Startup: IStartup
     {
+        private readonly IConfiguration config;
+
+        public Startup(IConfiguration config)
+        {
+            this.config = config;
+        }
+
         public void Configure(IApplicationBuilder app)
         {
             app.Use(async (ctx, next) =>
@@ -26,11 +33,6 @@ namespace BridgeBotNext
 
         public IServiceProvider ConfigureServices(IServiceCollection services)
         {
-            IConfiguration config = new ConfigurationBuilder()
-                .AddJsonFile("appsettings.json", true, false)
-                .AddEnvironmentVariables("BOT_")
-                .Build();
-
             services
                 .AddLogging(configure => configure.AddConsole())
                 .Configure<LoggerFilterOptions>(options => options.MinLevel = LogLevel.Trace);

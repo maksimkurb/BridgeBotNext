@@ -18,7 +18,9 @@ namespace BridgeBotNextTest
         {
             _provider = provider;
             _provider.CommandReceived += OnCommand;
-            _provider.Connect();
+            _provider.MessageReceived += OnCommand;
+
+             _provider.Connect().Wait();
 
             tcs = new TaskCompletionSource<bool>();
         }
@@ -150,7 +152,7 @@ namespace BridgeBotNextTest
             await _provider.SendMessage(_conversation, "place");
             await _provider.SendMessage(_conversation, new Message(attachments: new[]
             {
-                new PlaceAttachment(-72.020112, 14.452641)
+                new PlaceAttachment(50.595505, 36.598430)
             }));
 
             await Task.Delay(1000);
@@ -158,7 +160,7 @@ namespace BridgeBotNextTest
             await _provider.SendMessage(_conversation, "file");
             await _provider.SendMessage(_conversation, new Message(attachments: new[]
             {
-                new FileAttachment("https://sample-videos.com/text/Sample-text-file-10kb.txt",
+                new FileAttachment("https://file-examples-com.github.io/uploads/2017/02/file_example_CSV_5000.csv",
                     caption: "Sample text file")
             }));
 

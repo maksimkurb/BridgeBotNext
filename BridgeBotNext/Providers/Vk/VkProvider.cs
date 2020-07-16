@@ -52,7 +52,7 @@ namespace BridgeBotNext.Providers.Vk
             InboundClient = new VkApi(apiLogger);
             ApiClient = new VkApi(apiLogger);
 
-            _setApiVersion(5, 90);
+            _setApiVersion(5, 120);
             _authorize(new ApiAuthParams
             {
                 AccessToken = _accessToken
@@ -131,17 +131,14 @@ namespace BridgeBotNext.Providers.Vk
                             $"https://vk.com/audio?q={HttpUtility.UrlEncode(audioName)}", audio, $"🎵{audioName}"));
                         break;
                     }
-                    case AudioMessage audioMessage:
-                    {
-                        attachments.Add(new VoiceAttachment(audioMessage.LinkOgg.ToString(), audioMessage,
-                            fileName: null, duration: audioMessage.Duration));
-                        break;
-                    }
                     case Document doc when doc.Type == DocumentTypeEnum.Gif:
                         attachments.Add(new AnimationAttachment(doc.Uri, doc, doc.Title, fileSize: doc.Size ?? 0));
                         break;
                     case Document doc when doc.Type == DocumentTypeEnum.Video:
                         attachments.Add(new VideoAttachment(doc.Uri, doc, doc.Title, fileSize: doc.Size ?? 0));
+                        break;
+                    case Document doc when doc.Type == DocumentTypeEnum.Audio:
+                        attachments.Add(new VoiceAttachment(doc.Uri, doc, fileName: null, duration: doc.Preview?.AudioMessage?.Duration ?? 0));
                         break;
                     case Document doc:
                         attachments.Add(new FileAttachment(doc.Uri, doc, doc.Title, fileSize: doc.Size));
@@ -351,13 +348,17 @@ namespace BridgeBotNext.Providers.Vk
 
             #region Send message
 
+            var sender = "[unknown sender]";
+            if (message.OriginSender != null)
+                sender = FormatSender(message.OriginSender);
+
             var body = FormatMessageBody(message, fwd);
             if (body.Length > 0)
                 await ApiClient.Messages.SendAsync(new MessagesSendParams
                 {
                     GroupId = _groupId,
                     PeerId = peerId,
-                    Message = body,
+                    Message = $"{sender}\n{body}",
                     RandomId = random.Next()
                 });
 
@@ -433,14 +434,16 @@ namespace BridgeBotNext.Providers.Vk
                     foreach (var chunk in chunks)
                     {
                         var vkAttachments =
-                            await Task.WhenAll(chunk.Select(x => x.val).Select(GroupableAttachmentSelector()));
+                            await Task.WhenAll(chunk.Select(x => x.val)
+                                .Select(GroupableAttachmentSelector()));
 
                         await ApiClient.Messages.SendAsync(new MessagesSendParams
                         {
                             GroupId = _groupId,
                             PeerId = peerId,
-                            Attachments = vkAttachments,
-                            RandomId = random.Next()
+                            Attachments = vkAttachments.Where(a => a != null),
+                            RandomId = random.Next(),
+                            Message = $"{sender}\n{string.Join(" ", vkAttachments.Where(a => a == null).Select(a => "[Unsupported attachment]").ToArray())}" 
                         });
                     }
 
@@ -457,7 +460,7 @@ namespace BridgeBotNext.Providers.Vk
                                     GroupId = _groupId,
                                     PeerId = peerId,
                                     Attachments = new[] {await _uploadDocument(contact, docsUploadServer)},
-                                    Message = contact.ToString(),
+                                    Message = $"{sender}\n{contact}",
                                     RandomId = random.Next()
                                 });
                                 break;
@@ -466,7 +469,7 @@ namespace BridgeBotNext.Providers.Vk
                                 {
                                     GroupId = _groupId,
                                     PeerId = peerId,
-                                    Message = link.ToString(),
+                                    Message = $"{sender}\n{link}",
                                     RandomId = random.Next()
                                 });
                                 break;
@@ -477,7 +480,7 @@ namespace BridgeBotNext.Providers.Vk
                                     PeerId = peerId,
                                     Lat = place.Latitude,
                                     Longitude = place.Longitude, // typo in lib
-                                    Message = place.ToString(),
+                                    Message = $"{sender}\n{place}",
                                     RandomId = random.Next()
                                 });
                                 break;
