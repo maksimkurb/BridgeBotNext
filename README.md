@@ -1,7 +1,9 @@
 # BridgeBotNext
+![build](https://github.com/maksimkurb/BridgeBotNext/workflows/build/badge.svg) ![release](https://github.com/maksimkurb/BridgeBotNext/workflows/release/badge.svg)
+
 This is a new version of [MeBridgeBot](https://github.com/maksimkurb/MeBridgeBot), rewritten in C#
 
-Make a bridge between VK and Telegram groups!
+Make a bridge between VK and Telegram conversations!
 
 Add @MeBridgeBot to your conversations in [Telegram](https://t.me/MeBridgeBot) and [VK](https://vk.com/mebridgebot), allow them to read your messages (in VK you should make it in conversation settings, you must be Administrator to do this)
 
@@ -25,4 +27,4 @@ Set following env variables (aka Config Vars in Heroku):
 | BOT_VK__GROUPID | 1235467 | VK group id |
 | BOT_TG__BOTTOKEN | 1234567:abcdefg | Access token of Telegram bot |
 | BOT_AUTH__ENABLED | true  | Is bot settings protected with password (prevents 3rd parties from usage of your bot instance) |
-| BOT_AUTH__PASSWORD | pa$$w0rd | Bot password, if enabled
+| BOT_AUTH__PASSWORD | pa$$w0rd | Bot password, if enabled |

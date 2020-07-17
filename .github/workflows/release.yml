@@ -22,17 +22,19 @@ jobs:
           dotnet-version: 3.0.100
           
       - name: Build with dotnet (linux-x64)
-        run: dotnet publish -c "Release" -r linux-x64 -p:PublishTrimmed=true --self-contained true BridgeBotNext
+        run: dotnet publish -c "Release" -r linux-x64 --self-contained true BridgeBotNext
         
       - name: Build with dotnet (win-x86)
-        run: dotnet publish -c "Release" -r win-x86 -p:PublishTrimmed=true --self-contained true BridgeBotNext
+        run: dotnet publish -c "Release" -r win-x86 --self-contained true BridgeBotNext
 
       - name: Build with dotnet (win-x64)
-        run: dotnet publish -c "Release" -r win-x64 -p:PublishTrimmed=true --self-contained true BridgeBotNext
+        run: dotnet publish -c "Release" -r win-x64 --self-contained true BridgeBotNext
 
       - name: Build with dotnet (osx-x64)
-        run: dotnet publish -c "Release" -r osx-x64 -p:PublishTrimmed=true --self-contained true BridgeBotNext
+        run: dotnet publish -c "Release" -r osx-x64 --self-contained true BridgeBotNext
   
+      - name: Make files executable
+        run:  chmod +x ./BridgeBotNext/bin/Release/netcoreapp3.0/linux-x64/publish/BridgeBotNext ./BridgeBotNext/bin/Release/netcoreapp3.0/osx-x64/publish/BridgeBotNext
   
       - name: Pack release archive (linux-x64)
         run: tar -czvf bridgebotnext-${{ steps.get_version.outputs.VERSION }}-linux-x64.tag.gz -C ./BridgeBotNext/bin/Release/netcoreapp3.0/linux-x64/publish/ .

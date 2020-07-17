@@ -231,7 +231,7 @@ namespace BridgeBotNext
             {
                 sb.AppendFormat("{0}. ", i++);
 
-                if (connection.LeftConversation.Equals(conversation))
+                if (connection.LeftConversation == conversation)
                     sb.Append(CurrentChatPrefix);
                 if (connection.LeftConversation != null)
                     sb.Append(connection.LeftConversation);
@@ -240,7 +240,7 @@ namespace BridgeBotNext
 
                 sb.Append(" <--> ");
 
-                if (connection.RightConversation.Equals(conversation))
+                if (connection.RightConversation == conversation)
                     sb.Append(CurrentChatPrefix);
                 if (connection.RightConversation != null)
                     sb.Append(connection.RightConversation);
