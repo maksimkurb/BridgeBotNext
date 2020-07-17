@@ -26,6 +26,7 @@
  */
 
 using System;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -130,6 +131,8 @@ namespace BridgeBotNext.Providers.Vk
         private async Task _startPolling()
         {
             _getLongPollSettings();
+
+            int exceptionCount = 0;
             while (true)
                 try
                 {
@@ -147,11 +150,22 @@ namespace BridgeBotNext.Providers.Vk
                         continue;
                     _processEvents(longPollResponse);
                     _pollSettings.Ts = longPollResponse.Ts;
+                    exceptionCount = 0;
+                }
+                catch (IOException ex)
+                {
+                    _logger.LogError(ex, "IO error occurred during poll iteration");
+                    continue;
                 }
                 catch (Exception ex)
                 {
+                    exceptionCount++;
                     _logger.LogError(ex, "Error occurred during poll iteration");
-                    throw;
+                    if (exceptionCount >= 10)
+                    {
+                        _logger.LogError(ex, "After 10 repeated errors, throwing exception");
+                        throw;
+                    }
                 }
         }
 
