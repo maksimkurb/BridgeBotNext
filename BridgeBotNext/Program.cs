@@ -25,9 +25,7 @@ namespace BridgeBotNext
                 .UseStartup<Startup>()
                 .ConfigureAppConfiguration((hostContext, builder) =>
                 {
-                    builder
-                        .AddJsonFile("appsettings.json", true, false)
-                        .AddEnvironmentVariables("BOT_");
+                    builder.AddEnvironmentVariables("BOT_");
 
                     if (hostContext.HostingEnvironment.IsDevelopment())
                     {

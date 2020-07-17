@@ -1,0 +1,103 @@
+on:
+  push:
+    # Sequence of patterns matched against refs/tags
+    tags:
+      - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
+
+name: release
+jobs:
+  build:
+    name: Create Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Get the version
+        id: get_version
+        run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+
+      - name: Setup .NET Core
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: 3.0.100
+          
+      - name: Build with dotnet (linux-x64)
+        run: dotnet publish -c "Release" -r linux-x64 -p:PublishTrimmed=true --self-contained true BridgeBotNext
+        
+      - name: Build with dotnet (win-x86)
+        run: dotnet publish -c "Release" -r win-x86 -p:PublishTrimmed=true --self-contained true BridgeBotNext
+
+      - name: Build with dotnet (win-x64)
+        run: dotnet publish -c "Release" -r win-x64 -p:PublishTrimmed=true --self-contained true BridgeBotNext
+
+      - name: Build with dotnet (osx-x64)
+        run: dotnet publish -c "Release" -r osx-x64 -p:PublishTrimmed=true --self-contained true BridgeBotNext
+  
+  
+      - name: Pack release archive (linux-x64)
+        run: tar -czvf bridgebotnext-${{ steps.get_version.outputs.VERSION }}-linux-x64.tag.gz -C ./BridgeBotNext/bin/Release/netcoreapp3.0/linux-x64/publish/ .
+
+      - name: Pack release archive (win-x86)
+        run: zip -j -r bridgebotnext-${{ steps.get_version.outputs.VERSION }}-win-x86.zip ./BridgeBotNext/bin/Release/netcoreapp3.0/win-x86/publish/
+
+      - name: Pack release archive (win-x64)
+        run: zip -j -r bridgebotnext-${{ steps.get_version.outputs.VERSION }}-win-x64.zip ./BridgeBotNext/bin/Release/netcoreapp3.0/win-x64/publish/
+
+      - name: Pack release archive (osx-x64)
+        run: tar -czvf bridgebotnext-${{ steps.get_version.outputs.VERSION }}-osx-x64.tag.gz -C ./BridgeBotNext/bin/Release/netcoreapp3.0/osx-x64/publish/ .
+
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+        with:
+          tag_name: ${{ steps.get_version.outputs.VERSION }}
+          release_name: Release ${{ steps.get_version.outputs.VERSION }}
+          draft: false
+          prerelease: false
+          
+      - name: Upload Release Asset (linux-x64)
+        id: upload-release-asset-linux-x64
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
+          asset_path: ./bridgebotnext-${{ steps.get_version.outputs.VERSION }}-linux-x64.tag.gz
+          asset_name: bridgebotnext-${{ steps.get_version.outputs.VERSION }}-linux-x64.tag.gz
+          asset_content_type: application/tar+gzip
+
+      - name: Upload Release Asset (win-x86)
+        id: upload-release-asset-win-x86
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./bridgebotnext-${{ steps.get_version.outputs.VERSION }}-win-x86.zip
+          asset_name: bridgebotnext-${{ steps.get_version.outputs.VERSION }}-win-x86.zip
+          asset_content_type: application/zip
+
+      - name: Upload Release Asset (win-x64)
+        id: upload-release-asset-win-x64
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./bridgebotnext-${{ steps.get_version.outputs.VERSION }}-win-x64.zip
+          asset_name: bridgebotnext-${{ steps.get_version.outputs.VERSION }}-win-x64.zip
+          asset_content_type: application/zip
+
+      - name: Upload Release Asset (osx-x64)
+        id: upload-release-asset-osx-x64
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./bridgebotnext-${{ steps.get_version.outputs.VERSION }}-osx-x64.tag.gz
+          asset_name: bridgebotnext-${{ steps.get_version.outputs.VERSION }}-osx-x64.tag.gz
+          asset_content_type: application/tar+gzip
