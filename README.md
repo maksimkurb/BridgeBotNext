@@ -1,6 +1,5 @@
 # BridgeBotNext
-![GitHub release (latest by date)](https://img.shields.io/github/v/release/maksimkurb/BridgeBotNext) ![Docker Pulls](https://img.shields.io/docker/pulls/maksimkurb/bridge-bot-next) ![build](https://github.com/maksimkurb/BridgeBotNext/workflows/build/badge.svg) ![release](https://github.com/maksimkurb/BridgeBotNext/workflows/release/badge.svg) ![GitHub stars](https://img.shields.io/github/stars/maksimkurb/BridgeBotNext?style=social)
-
+[![GitHub release (latest by date)](https://img.shields.io/github/v/release/maksimkurb/BridgeBotNext)](https://github.com/maksimkurb/BridgeBotNext/releases) [![Docker Pulls](https://img.shields.io/docker/pulls/maksimkurb/bridge-bot-next)](https://hub.docker.com/r/maksimkurb/bridge-bot-next) [![build](https://github.com/maksimkurb/BridgeBotNext/workflows/build/badge.svg)](https://github.com/maksimkurb/BridgeBotNext/actions?query=workflow%3Abuild) [![release](https://github.com/maksimkurb/BridgeBotNext/workflows/release/badge.svg)](https://github.com/maksimkurb/BridgeBotNext/actions?query=workflow%3Arelease) [![GitHub stars](https://img.shields.io/github/stars/maksimkurb/BridgeBotNext?style=social)](https://github.com/maksimkurb/BridgeBotNext/stargazers) 
 
 <p align="center">
 	<img width="615" height="308" title="BridgeBotNext Logo" src="https://raw.githubusercontent.com/maksimkurb/BridgeBotNext/master/static/logo.png">
