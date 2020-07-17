@@ -163,7 +163,7 @@ namespace BridgeBotNext
 /Поддерживаемые_мессенджеры: {string.Join(", ", _providers.Select(p => p.DisplayName))}
 /Версия_бота: {Program.Version}
 /Страница_проекта: https://github.com/maksimkurb/BridgeBotNext
-/Автор: <Maxim Kurbatov> max@cubly.ru, 2018-2019");
+/Автор: <Maxim Kurbatov> max@cubly.ru, 2018-2020");
         }
 
         private async Task OnDisconnectCommand(Provider.MessageEventArgs e, string command, string args)
