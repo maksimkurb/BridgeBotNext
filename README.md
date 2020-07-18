@@ -18,23 +18,77 @@ Enter this special command in another chat (it looks like `/connect $mbb2$1!9d8x
 ![Screenshot](https://raw.githubusercontent.com/maksimkurb/BridgeBotNext/master/static/screenshot.jpg)
 
 ## Deployment
-You can deploy it to heroku with 1-click button:
+
+### Docker
+
+You can run bot by creating docker container:
+```bash
+docker run --name bridge-bot \
+             -e BOT_VK__ACCESSTOKEN=abcdef \
+             -e BOT_VK__GROUPID=123456 \
+             -e BOT_TG__BOTTOKEN="1235467:abcdefg" \
+             -v ./bridge-bot-data:/data \
+             maksimkurb/bridge-bot-next:1.0
+```
+
+### Heroku
+You can deploy bot to Heroku with 1-click button:
 
 [![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/maksimkurb/BridgeBotNext)
 
-### Required dependencies:
+### Manual
 For Linux, make sure you have insalled libfontconfig:
 ```bash
 apt-get install -y libfontconfig1
 ```
 
+Then, just download latest release, create appsettings.json, configure it and run `BridgeBotNext` executable.
 
-Set following env variables (aka Config Vars in Heroku):
+## Configuration
 
-|Key  |Sample value   | Description   |
+### Environment
+You can configure bot via the following environment variables:
+
+|Key (notice double underscore)  |Sample value   | Description   |
 |:---|----|----|
 | BOT_VK__ACCESSTOKEN | abcdefg | Access token of VK bot  |
 | BOT_VK__GROUPID | 1235467 | VK group id |
 | BOT_TG__BOTTOKEN | 1234567:abcdefg | Access token of Telegram bot |
 | BOT_AUTH__ENABLED | true  | Is bot settings protected with password (prevents 3rd parties from usage of your bot instance) |
 | BOT_AUTH__PASSWORD | pa$$w0rd | Bot password, if enabled |
+| BOT_DBPROVIDER | sqlite | Database provider (sqlite/postgres) |
+| BOT_CONNECTIONSTRINGS_SQLITE | Data Source=./mydatabase.db | Path to the bot database |
+| BOT_CONNECTIONSTRINGS_POSTGRES | Host=localhost;Database=postgres;Username=postgres;Password=postgres | Connection string for postgres |
+
+### appsettings.json file
+You can create `appsettings.json` configuration file, place it in the folder with BridgeBotNext:
+```json
+{
+  "Vk": {
+    "AccessToken": "abcdef",
+    "GroupId": 170046687
+  },
+  "Tg": {
+    "BotToken": "1234567:asdadasdasdasd"
+  },
+  "Auth": {
+    "Enabled": true,
+    "Password": "pa$$w0rd"
+  },
+  "DbProvider": "sqlite",
+  "ConnectionStrings": {
+    "sqlite": "Data Source=mydatabase.db",
+    "postgres": "Host=localhost;Database=postgres;Username=postgres;Password=postgres"
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "System": "Warning",
+      "Microsoft": "Warning"
+    },
+    "Console": {
+      "IncludeScopes": true
+    }
+  }
+}
+```
