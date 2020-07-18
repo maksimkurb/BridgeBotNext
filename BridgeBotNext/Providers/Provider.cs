@@ -40,13 +40,12 @@ namespace BridgeBotNext.Providers
             return (body ?? "").Trim('\n');
         }
 
-        public virtual string FormatForwardedMessages(IEnumerable<(Message Item, int Level)> messages)
+        public virtual string FormatForwardedMessages(IEnumerable<(Message Item, int Level)> messages, ref int attachmentIdxCounter)
         {
             var sb = new StringBuilder();
 
             Person prevSender = null;
             var prevLevel = int.MaxValue;
-            int attachmentIdx = 1;
             foreach (var (msg, level) in messages)
             {
                 if (msg.OriginSender != null)
@@ -76,21 +75,33 @@ namespace BridgeBotNext.Providers
                     }
                 }
 
-                if (msg.Attachments != null && msg.Attachments.Any())
-                {
-                    sb.Append("| ");
-                    for (var i = 0; i <= level; i++) sb.Append(">⁣");
-                    sb.Append("| ");
+                sb.Append(FormatAttachmentsIcons(msg, level, ref attachmentIdxCounter));
 
-                    for (int i = 0; i < msg.Attachments.Count(); i++)
-                    {
-                        sb.AppendFormat("[📎{0}] ", attachmentIdx++);
-                    }
-                    sb.Append("\n");
-                }
 
                 prevSender = msg.OriginSender;
                 prevLevel = level;
+            }
+
+            return sb.ToString();
+        }
+
+        protected virtual string FormatAttachmentsIcons(Message msg, int level, ref int counter)
+        {
+            StringBuilder sb = new StringBuilder();
+
+            if (msg.Attachments != null && msg.Attachments.Any())
+            {
+                if (level >= 0) { 
+                    sb.Append("| ");
+                    for (var i = 0; i <= level; i++) sb.Append(">⁣");
+                    sb.Append("| ");
+                }
+
+                for (int i = 0; i < msg.Attachments.Count(); i++)
+                {
+                    sb.AppendFormat("[📎{0}] ", counter++);
+                }
+                sb.Append("\n");
             }
 
             return sb.ToString();
@@ -106,9 +117,12 @@ namespace BridgeBotNext.Providers
         {
             var body = new StringBuilder();
 
-            if (!forwardedMessages.IsNullOrEmpty()) body.AppendLine(FormatForwardedMessages(forwardedMessages));
+            int attachmentIdxCounter = 1;
 
+            if (!forwardedMessages.IsNullOrEmpty()) body.AppendLine(FormatForwardedMessages(forwardedMessages, ref attachmentIdxCounter));
+            
             if (!string.IsNullOrEmpty(message.Body)) body.AppendLine(SanitizeMessageBody(message.Body));
+            body.Append(FormatAttachmentsIcons(message, -1, ref attachmentIdxCounter));
 
             return body.ToString();
         }

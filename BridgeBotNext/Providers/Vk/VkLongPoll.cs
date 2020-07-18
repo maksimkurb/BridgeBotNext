@@ -122,7 +122,7 @@ namespace BridgeBotNext.Providers.Vk
                 OnGroupUpdateReceived?.Invoke(this, new GroupUpdateReceivedEventArgs(update));
                 if (update.Type == GroupUpdateType.MessageNew)
                 {
-                    OnMessageReceived?.Invoke(this, new MessageReceivedEventArgs(update.Message));
+                    OnMessageReceived?.Invoke(this, new MessageReceivedEventArgs(update.MessageNew?.Message));
                 }
             }
         }

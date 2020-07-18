@@ -95,8 +95,13 @@ namespace BridgeBotNext.Providers.Vk
                 Task.Run(async () => { person = await _extractPerson(msg); }),
                 Task.Run(async () =>
                 {
-                    forwarded = await Task.WhenAll(
-                        msg.ForwardedMessages.Select(fwd => _extractMessage(fwd, false)));
+                    if (msg.ForwardedMessages != null && msg.ForwardedMessages.Count > 0) { 
+                        forwarded = await Task.WhenAll(
+                            msg.ForwardedMessages.Select(fwd => _extractMessage(fwd, false)));
+                    } else if (msg.ReplyMessage != null)
+                    {
+                        forwarded = new[] { await _extractMessage(msg.ReplyMessage, false) };
+                    }
                 }),
                 Task.Run(() => { attachments = _extractAttachments(msg); })
             );
@@ -124,21 +129,21 @@ namespace BridgeBotNext.Providers.Vk
                         attachments.Add(new LinkAttachment($"https://vk.com/video{video.OwnerId}_{video.Id}", video,
                             $"📹{video.Title}"));
                         break;
-                    case Audio audio:
-                    {
-                        var audioName = $"{audio.Title.Replace('+', ' ')} - {audio.Artist.Replace('+', ' ')}";
-                        attachments.Add(new LinkAttachment(
-                            $"https://vk.com/audio?q={HttpUtility.UrlEncode(audioName)}", audio, $"🎵{audioName}"));
+                    case AudioMessage audioMessage:
+                        attachments.Add(new VoiceAttachment(audioMessage.LinkOgg.ToString(), audioMessage, fileName: null, duration: audioMessage.Duration));
                         break;
-                    }
+                    case Audio audio:
+                        {
+                            var audioName = $"{audio.Title.Replace('+', ' ')} - {audio.Artist.Replace('+', ' ')}";
+                            attachments.Add(new LinkAttachment(
+                                $"https://vk.com/audio?q={HttpUtility.UrlEncode(audioName)}", audio, $"🎵{audioName}"));
+                            break;
+                        }
                     case Document doc when doc.Type == DocumentTypeEnum.Gif:
                         attachments.Add(new AnimationAttachment(doc.Uri, doc, doc.Title, fileSize: doc.Size ?? 0));
                         break;
                     case Document doc when doc.Type == DocumentTypeEnum.Video:
                         attachments.Add(new VideoAttachment(doc.Uri, doc, doc.Title, fileSize: doc.Size ?? 0));
-                        break;
-                    case Document doc when doc.Type == DocumentTypeEnum.Audio:
-                        attachments.Add(new VoiceAttachment(doc.Uri, doc, fileName: null, duration: doc.Preview?.AudioMessage?.Duration ?? 0));
                         break;
                     case Document doc:
                         attachments.Add(new FileAttachment(doc.Uri, doc, doc.Title, fileSize: doc.Size));
@@ -460,7 +465,7 @@ namespace BridgeBotNext.Providers.Vk
                                     GroupId = _groupId,
                                     PeerId = peerId,
                                     Attachments = new[] {await _uploadDocument(contact, docsUploadServer)},
-                                    Message = $"{sender}{contact}",
+                                    Message = $"{sender}{contact.ToString()}",
                                     RandomId = random.Next()
                                 });
                                 break;
@@ -469,7 +474,7 @@ namespace BridgeBotNext.Providers.Vk
                                 {
                                     GroupId = _groupId,
                                     PeerId = peerId,
-                                    Message = $"{sender}{link}",
+                                    Message = $"{sender}{link.ToString()}",
                                     RandomId = random.Next()
                                 });
                                 break;
@@ -480,7 +485,7 @@ namespace BridgeBotNext.Providers.Vk
                                     PeerId = peerId,
                                     Lat = place.Latitude,
                                     Longitude = place.Longitude, // typo in lib
-                                    Message = $"{sender}{place}",
+                                    Message = $"{sender}{place.ToString()}",
                                     RandomId = random.Next()
                                 });
                                 break;
