@@ -1,0 +1,15 @@
+name: bridgebot-next
+services:
+    bridgebot-next:
+        container_name: bridgebot-next
+        volumes:
+            - ./docker-data:/data
+        image: ghcr.io/maksimkurb/bridge-bot-next
+        environment:
+            BOT_VK__ACCESSTOKEN: "vk1.a...."
+            BOT_VK__GROUPID: 12345678
+            BOT_TG__BOTTOKEN: "123455678:AAbcdefg..."
+            BOT_AUTH__ENABLED: "true"
+            BOT_AUTH__PASSWORD: "..."
+            BOT_DBPROVIDER: "sqlite"
+            BOT_CONNECTIONSTRINGS_SQLITE: "Data Source=./database.db"

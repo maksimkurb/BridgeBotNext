@@ -160,10 +160,10 @@ namespace BridgeBotNext
 3) Введите полученную команду в другой беседе, где находится этот бот.
 Вы можете посмотреть текущие соединения с помощью команды /list
 
-/Поддерживаемые_мессенджеры: {string.Join(", ", _providers.Select(p => p.DisplayName))}
-/Версия_бота: {Program.Version}
-/Страница_проекта: https://github.com/maksimkurb/BridgeBotNext
-/Автор: <Maxim Kurbatov> max@cubly.ru, 2018-2020");
+- Поддерживаемые мессенджеры: {string.Join(", ", _providers.Select(p => p.DisplayName))}
+- Версия бота: {Program.Version}
+- Страница проекта: https://github.com/maksimkurb/BridgeBotNext
+- Автор: <Maxim Kurbatov> max@cubly.ru, 2018-2024");
         }
 
         private async Task OnDisconnectCommand(Provider.MessageEventArgs e, string command, string args)

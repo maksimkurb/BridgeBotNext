@@ -19,14 +19,7 @@ ENTRYPOINT ["dotnet", "BridgeBotNext.dll"]
 
 RUN mkdir /data
 
-#ENV BOT_VK__ACCESSTOKEN abc
-#ENV BOT_VK__GROUPID
-#ENV BOT_TG__BOTTOKEN
-ENV BOT_AUTH__ENABLED false
-#ENV BOT_AUTH__PASSWORD
-
-ENV BOT_DBPROVIDER sqlite
-ENV ConnectionStrings__sqlite "Data Source=/data/bridgebotnext.db"
+ENV ConnectionStrings__sqlite="Data Source=/data/bridgebotnext.db"
 
 VOLUME /data
 
