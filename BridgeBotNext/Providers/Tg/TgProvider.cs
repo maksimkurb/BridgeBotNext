@@ -92,7 +92,14 @@ namespace BridgeBotNext.Providers.Tg
 
             var body = FormatMessageBody(message, fwd);
             if (body.Length > 0)
-                await BotClient.SendTextMessageAsync(new ChatId(conversation.OriginId), $"{sender}{body}", ParseMode.Html, true);
+            {
+                await BotClient.SendTextMessageAsync(
+                    chatId: chat,
+                    text: $"{sender}{body}",
+                    parseMode: ParseMode.Html,
+                    disableWebPagePreview: true
+                );
+            }
 
             #endregion
 
@@ -113,8 +120,8 @@ namespace BridgeBotNext.Providers.Tg
                             case PhotoAttachment albumPhoto:
                             {
                                 if (albumPhoto.Meta is PhotoSize photo)
-                                    return new InputMediaPhoto(new InputMedia(photo.FileId));
-                                var tgPhoto = new InputMediaPhoto(new InputMedia(albumPhoto.Url))
+                                    return new InputMediaPhoto(photo.FileId);
+                                var tgPhoto = new InputMediaPhoto(albumPhoto.Url)
                                 {
                                     Caption = message?.OriginSender?.DisplayName != null
                                         ? $"[{message.OriginSender.DisplayName}] {albumPhoto.Caption ?? ""}"
@@ -126,13 +133,13 @@ namespace BridgeBotNext.Providers.Tg
                             case VideoAttachment albumVideo:
                             {
                                 if (albumVideo.Meta is Video video)
-                                    return new InputMediaPhoto(new InputMedia(video.FileId));
+                                    return new InputMediaVideo(video.FileId);
                                 var tgVideo = new InputMediaVideo(albumVideo.Url)
                                 {
                                     Caption = message?.OriginSender?.DisplayName != null
                                         ? $"[{message.OriginSender.DisplayName}] {albumVideo.Caption ?? ""}"
                                         : albumVideo.Caption,
-                                    Duration = (int) (albumVideo.Duration ?? 0),
+                                    Duration = (int)(albumVideo.Duration ?? 0),
                                     Width = albumVideo.Width,
                                     Height = albumVideo.Height
                                 };
@@ -150,87 +157,135 @@ namespace BridgeBotNext.Providers.Tg
                     .GroupBy(tuple => tuple.i / 10);
 
                 foreach (var chunk in chunks)
+                {
+                    var media = chunk.Select(x => x.val).Select(AlbumAttachmentSelector());
                     await BotClient.SendMediaGroupAsync(
-                        chunk.Select(x => x.val).Select(AlbumAttachmentSelector()), chat);
+                        chatId: chat,
+                        media: media
+                    );
+                }
 
                 var restAttachments = attachments.Where(at => !(at is ITgGroupableAttachment));
                 foreach (var at in restAttachments)
+                {
                     if (at is AnimationAttachment animation)
                     {
-                        await BotClient.SendAnimationAsync(chat, _getInputFile(message, animation),
-                            (int) (animation.Duration ?? 0),
-                            animation.Width,
-                            animation.Height, caption: animation.Caption);
+                        await BotClient.SendAnimationAsync(
+                            chatId: chat,
+                            animation: _getInputFile(message, animation),
+                            duration: animation.Duration.HasValue ? (int)animation.Duration.Value : 0,
+                            width: animation.Width,
+                            height: animation.Height,
+                            caption: animation.Caption
+                        );
                     }
                     else if (at is VoiceAttachment voice)
                     {
-                        var req = (HttpWebRequest) WebRequest.Create(voice.Url);
+                        var req = (HttpWebRequest)WebRequest.Create(voice.Url);
                         req.Timeout = 15000;
-                        var resp = (HttpWebResponse) req.GetResponse();
-                        await BotClient.SendVoiceAsync(chat,
-                            new InputOnlineFile(resp.GetResponseStream(), voice.FileName), voice.Caption);
+                        var resp = (HttpWebResponse)req.GetResponse();
+                        await BotClient.SendVoiceAsync(
+                            chatId: chat,
+                            voice: new InputOnlineFile(resp.GetResponseStream(), voice.FileName),
+                            caption: voice.Caption
+                        );
                     }
                     else if (at is AudioAttachment audio)
                     {
-                        await BotClient.SendAudioAsync(chat, _getInputFile(message, audio), audio.Caption,
-                            duration: (int) (audio.Duration ?? 0),
-                            performer: audio.Performer, title: audio.Title);
+                        await BotClient.SendAudioAsync(
+                            chatId: chat,
+                            audio: _getInputFile(message, audio),
+                            caption: audio.Caption,
+                            duration: audio.Duration.HasValue ? (int)audio.Duration.Value : 0,
+                            performer: audio.Performer,
+                            title: audio.Title
+                        );
                     }
                     else if (at is ContactAttachment contact)
                     {
-                        await BotClient.SendContactAsync(chat, contact.Phone, contact.FirstName, contact.LastName,
-                            vCard: contact.VCard);
+                        await BotClient.SendContactAsync(
+                            chatId: chat,
+                            phoneNumber: contact.Phone,
+                            firstName: contact.FirstName,
+                            lastName: contact.LastName,
+                            vCard: contact.VCard
+                        );
                     }
                     else if (at is LinkAttachment link)
                     {
-                        await BotClient.SendTextMessageAsync(chat, $"{sender}{link.Url}", ParseMode.Html);
+                        await BotClient.SendTextMessageAsync(
+                            chatId: chat,
+                            text: $"{sender}{link.Url}",
+                            parseMode: ParseMode.Html
+                        );
                     }
                     else if (at is StickerAttachment sticker)
                     {
                         var inputFile = _getInputFile(message, sticker);
                         if (sticker.MimeType == "image/webp")
                         {
-                            await BotClient.SendStickerAsync(chat, inputFile);
+                            await BotClient.SendStickerAsync(
+                                chatId: chat,
+                                sticker: inputFile
+                            );
                         }
                         else
                         {
                             Logger.LogTrace("Converting sticker to webp format");
-                            var req = (HttpWebRequest) WebRequest.Create(inputFile.Url);
+                            var req = (HttpWebRequest)WebRequest.Create(inputFile.Url);
                             req.Timeout = 15000;
-                            var resp = (HttpWebResponse) req.GetResponse();
+                            var resp = (HttpWebResponse)req.GetResponse();
                             var image = SKImage.FromBitmap(SKBitmap.Decode(resp.GetResponseStream()));
                             using (var p = image.Encode(SKEncodedImageFormat.Webp, 100))
                             {
-                                await BotClient.SendStickerAsync(chat,
-                                    new InputMedia(p.AsStream(), "sticker.webp"));
+                                await BotClient.SendStickerAsync(
+                                    chatId: chat,
+                                    sticker: new InputOnlineFile(p.AsStream(), "sticker.webp")
+                                );
                             }
                         }
                     }
                     else if (at is PlaceAttachment place)
                     {
                         if (place.Name != null && place.Address != null)
-                            await BotClient.SendVenueAsync(chat, (float) place.Latitude, (float) place.Longitude,
-                                place.Name,
-                                place.Address);
+                            await BotClient.SendVenueAsync(
+                                chatId: chat,
+                                latitude: (float)place.Latitude,
+                                longitude: (float)place.Longitude,
+                                title: place.Name,
+                                address: place.Address
+                            );
                         else
-                            await BotClient.SendLocationAsync(chat, (float) place.Latitude, (float) place.Longitude);
+                            await BotClient.SendLocationAsync(
+                                chatId: chat,
+                                latitude: (float)place.Latitude,
+                                longitude: (float)place.Longitude
+                            );
                     }
                     else if (at is FileAttachment file)
                     {
                         if (file.MimeType == "image/gif" || file.MimeType == "application/pdf" ||
                             file.MimeType == "application/zip")
                         {
-                            await BotClient.SendDocumentAsync(chat, _getInputFile(message, file), file.Caption);
+                            await BotClient.SendDocumentAsync(
+                                chatId: chat,
+                                document: _getInputFile(message, file),
+                                caption: file.Caption
+                            );
                         }
                         else
                         {
-                            var req = (HttpWebRequest) WebRequest.Create(file.Url);
+                            var req = (HttpWebRequest)WebRequest.Create(file.Url);
                             req.Timeout = 15000;
-                            var resp = (HttpWebResponse) req.GetResponse();
-                            await BotClient.SendDocumentAsync(chat,
-                                new InputOnlineFile(resp.GetResponseStream(), file.FileName), file.Caption);
+                            var resp = (HttpWebResponse)req.GetResponse();
+                            await BotClient.SendDocumentAsync(
+                                chatId: chat,
+                                document: new InputOnlineFile(resp.GetResponseStream(), file.FileName),
+                                caption: file.Caption
+                            );
                         }
                     }
+                }
             }
 
             #endregion
@@ -241,21 +296,21 @@ namespace BridgeBotNext.Providers.Tg
             if (message.OriginSender != null && message.OriginSender.Provider.Equals(this))
             {
                 if (attachment.Meta is Audio audio)
-                    return audio.FileId;
+                    return new InputOnlineFile(audio.FileId);
                 if (attachment.Meta is Document document)
-                    return document.FileId;
+                    return new InputOnlineFile(document.FileId);
                 if (attachment.Meta is Animation animation)
-                    return animation.FileId;
+                    return new InputOnlineFile(animation.FileId);
                 if (attachment.Meta is PhotoSize photo)
-                    return photo.FileId;
+                    return new InputOnlineFile(photo.FileId);
                 if (attachment.Meta is Sticker sticker)
-                    return sticker.FileId;
+                    return new InputOnlineFile(sticker.FileId);
                 if (attachment.Meta is Video video)
-                    return video.FileId;
+                    return new InputOnlineFile(video.FileId);
                 if (attachment.Meta is Voice voice)
-                    return voice.FileId;
+                    return new InputOnlineFile(voice.FileId);
                 if (attachment.Meta is VideoNote videoNote)
-                    return videoNote.FileId;
+                    return new InputOnlineFile(videoNote.FileId);
             }
 
             return new InputOnlineFile(attachment.Url);
@@ -271,7 +326,7 @@ namespace BridgeBotNext.Providers.Tg
             var fullName = new StringBuilder().Append(tgUser.FirstName);
             if (tgUser.LastName != null)
                 fullName.AppendFormat(" {0}", tgUser.LastName);
-            return new TgPerson(this, tgUser.Id, tgUser.Username, fullName.ToString());
+            return new TgPerson(this, Convert.ToInt32(tgUser.Id), tgUser.Username, fullName.ToString());
         }
 
         /**
@@ -380,15 +435,15 @@ namespace BridgeBotNext.Providers.Tg
 
             if (tgMessage.Entities != null)
                 attachments.AddRange(from entity in tgMessage.Entities
-                    where entity.Type == MessageEntityType.TextLink
-                    select new LinkAttachment(entity.Url));
+                                     where entity.Type == MessageEntityType.TextLink
+                                     select new LinkAttachment(entity.Url));
 
             // Just forwarded message
             if (tgMessage.ForwardFrom != null)
             {
                 var fwdPerson = _extractPerson(tgMessage.ForwardFrom);
                 var fwdMessage = new Message(conversation, fwdPerson, tgMessage.Text, attachments: attachments);
-                return new Message(conversation, person, forwardedMessages: new[] {fwdMessage});
+                return new Message(conversation, person, forwardedMessages: new[] { fwdMessage });
             }
 
             // Reply to
@@ -411,43 +466,50 @@ namespace BridgeBotNext.Providers.Tg
 
         private async void _onMessage(object sender, Telegram.Bot.Args.MessageEventArgs e)
         {
-            if (e.Message == null)
+            try
             {
-                return;
-            }
-
-            if (
-                e.Message.Text != null
-                && e.Message.Text.StartsWith("/")
-                && !e.Message.Text.Contains(" ")
-                && e.Message.Text.Contains("@")
-            )
-            {
-                var botName = $"@{BotUserName}";
-                if (!e.Message.Text.EndsWith(botName))
+                if (e.Message == null)
                 {
-                    Logger.LogDebug("Message is a command that targets another bot. Skipping it...");
                     return;
                 }
 
-                e.Message.Text = e.Message.Text.Substring(0, e.Message.Text.Length - botName.Length);
+                if (
+                    e.Message.Text != null
+                    && e.Message.Text.StartsWith("/")
+                    && !e.Message.Text.Contains(" ")
+                    && e.Message.Text.Contains("@")
+                )
+                {
+                    var botName = $"@{BotUserName}";
+                    if (!e.Message.Text.EndsWith(botName))
+                    {
+                        Logger.LogDebug("Message is a command that targets another bot. Skipping it...");
+                        return;
+                    }
+
+                    e.Message.Text = e.Message.Text.Substring(0, e.Message.Text.Length - botName.Length);
+                }
+
+                var message = await _extractMessage(e.Message);
+
+                if (e.Message.MediaGroupId != null && message.Attachments.Any())
+                {
+                    _mediaGroupSettler.AddMediaGroupMessage(e.Message.MediaGroupId, message, message.Attachments.First());
+                    return;
+                }
+
+                if (!string.IsNullOrEmpty(message.Body) && message.Body.StartsWith("/"))
+                {
+                    OnCommandReceived(new MessageEventArgs(message));
+                    return;
+                }
+
+                OnMessageReceived(new MessageEventArgs(message));
             }
-
-            var message = await _extractMessage(e.Message);
-
-            if (e.Message.MediaGroupId != null && message.Attachments.Any())
+            catch (Exception ex)
             {
-                _mediaGroupSettler.AddMediaGroupMessage(e.Message.MediaGroupId, message, message.Attachments.First());
-                return;
+                Logger.LogError(ex, "Error processing incoming message");
             }
-
-            if (!string.IsNullOrEmpty(message.Body) && message.Body.StartsWith("/"))
-            {
-                OnCommandReceived(new MessageEventArgs(message));
-                return;
-            }
-
-            OnMessageReceived(new MessageEventArgs(message));
         }
 
         private void _onMediaGroupMessage(object sender, TgMediaGroupSettler.MediaGroupEventArgs e)

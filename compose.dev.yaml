@@ -1,0 +1,10 @@
+name: bridgebot-next
+services:
+    bridgebot-next:
+        extends:
+            file: compose.yaml
+            service: bridgebot-next
+        build:
+            context: ./
+            dockerfile: Dockerfile
+

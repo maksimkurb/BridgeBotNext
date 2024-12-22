@@ -17,7 +17,7 @@ namespace BridgeBotNext
 {
     internal class Program
     {
-        public static string Version => "2.0.0";
+        public static string Version => "2.1.0";
 
         public static IWebHostBuilder CreateWebHostBuilder(string[] args)
         {

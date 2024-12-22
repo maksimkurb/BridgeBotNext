@@ -67,7 +67,7 @@ namespace BridgeBotNext.Providers.Vk
         }
 
         public override string Name => "vk";
-        public override string DisplayName => "Vkontakte";
+        public override string DisplayName => "ВКонтакте";
 
         private void _setApiVersion(int major, int minor)
         {
